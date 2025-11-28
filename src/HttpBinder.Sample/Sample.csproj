@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Reference the generator project as an analyzer so that the binder
+         source is generated at build time. Set ReferenceOutputAssembly to
+         false because we only need the analyzer, not the code. -->
+    <ProjectReference Include="..\HttpBinder.Generator\HttpBinder.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+</Project>

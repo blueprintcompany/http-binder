@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<!-- Target netstandard2.0 so the generator can run in any host. -->
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<!-- Emit the compiled DLL as an analyzer and prevent it from being included in the build output. -->
+		<OutputItemType>Analyzer</OutputItemType>
+		<IncludeBuildOutput>false</IncludeBuildOutput>
+		<LangVersion>Latest</LangVersion>
+		<Nullable>enable</Nullable>
+		<PackageId>HttpBinder.Generator</PackageId>
+		<Authors>Ben Sampica</Authors>
+		<Company>Blueprint Software</Company>
+		<Product>HttpBinder</Product>
+		<Description>A source generator that produces Minimal API HTTP binders from multiple sources (route, query and form).</Description>
+		<RepositoryUrl>https://example.com/HttpBinder</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<!-- Mark the package as a Roslyn analyzer. -->
+		<PackageTags>source generator;minimal api;http binder</PackageTags>
+		<IsPackable>true</IsPackable>
+		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" PrivateAssets="all" />
+	</ItemGroup>
+	<!-- This ensures the library will be packaged as a source generator when we use `dotnet pack` -->
+	<ItemGroup>
+		<None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true"
+			PackagePath="analyzers/dotnet/cs" Visible="false" />
+	</ItemGroup>
+</Project>
