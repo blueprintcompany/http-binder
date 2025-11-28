@@ -9,18 +9,11 @@ namespace HttpBinder.Generator
     /// <see cref="Unindent"/> adjusts the indentation prefix used when
     /// appending new lines.
     /// </summary>
-    internal sealed class IndentedStringBuilder
+    internal sealed class IndentedStringBuilder(StringBuilder sb, int initialIndentLevel = 0, string indentToken = "    ")
     {
-        private readonly StringBuilder _sb;
-        private readonly string _indentToken;
-        private int _indentLevel;
-
-        public IndentedStringBuilder(StringBuilder sb, int initialIndentLevel = 0, string indentToken = "    ")
-        {
-            _sb = sb;
-            _indentLevel = initialIndentLevel;
-            _indentToken = indentToken;
-        }
+        private readonly StringBuilder _sb = sb;
+        private readonly string _indentToken = indentToken;
+        private int _indentLevel = initialIndentLevel;
 
         public void Indent() => _indentLevel++;
         public void Unindent() => _indentLevel = _indentLevel > 0 ? _indentLevel - 1 : 0;
