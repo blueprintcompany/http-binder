@@ -21,99 +21,83 @@ namespace HttpBinder.Generator
     /// including the target name, source and whether the property is a
     /// collection or nested complex type.
     /// </summary>
-    internal sealed class BoundProperty
+    internal sealed class BoundProperty(IPropertySymbol symbol, string keyName, SourceKind source, bool isNullable,
+        bool isCollection, ITypeSymbol? elementType, bool isEnum, bool isGuid, bool isPrimitive,
+        bool isString, bool isComplex, List<BoundProperty>? children)
     {
-        public BoundProperty(IPropertySymbol symbol, string keyName, SourceKind source, bool isNullable,
-            bool isCollection, ITypeSymbol? elementType, bool isEnum, bool isGuid, bool isPrimitive,
-            bool isString, bool isComplex, List<BoundProperty>? children)
-        {
-            Symbol = symbol;
-            Name = symbol.Name;
-            KeyName = keyName;
-            Source = source;
-            IsNullable = isNullable;
-            IsCollection = isCollection;
-            ElementType = elementType;
-            IsEnum = isEnum;
-            IsGuid = isGuid;
-            IsPrimitive = isPrimitive;
-            IsString = isString;
-            IsComplex = isComplex;
-            Children = children ?? new List<BoundProperty>();
-        }
 
         /// <summary>
         /// The original property symbol.
         /// </summary>
-        public IPropertySymbol Symbol { get; }
+        public IPropertySymbol Symbol { get; } = symbol;
 
         /// <summary>
         /// The name of the property.
         /// </summary>
-        public string Name { get; }
+        public string Name { get; } = symbol.Name;
 
         /// <summary>
         /// The key name to look up in the HTTP sources. This can be overridden
         /// with the <c>FormField</c> attribute.
         /// </summary>
-        public string KeyName { get; }
+        public string KeyName { get; } = keyName;
 
         /// <summary>
         /// Indicates the source from which the value will be read (form, query or
         /// route). If none of the explicit attributes are applied the default
         /// source is form.
         /// </summary>
-        public SourceKind Source { get; }
+        public SourceKind Source { get; } = source;
 
         /// <summary>
         /// Whether the property can accept a null value. Nullable reference
         /// types and <see cref="System.Nullable{T}"/> struct types are
         /// considered nullable.
         /// </summary>
-        public bool IsNullable { get; }
+        public bool IsNullable { get; } = isNullable;
 
         /// <summary>
         /// Whether the property is a collection type (arrays or generic lists).
         /// </summary>
-        public bool IsCollection { get; }
+        public bool IsCollection { get; } = isCollection;
 
         /// <summary>
         /// For collection properties, the element type contained in the
         /// collection. This will be null for non‑collection properties.
         /// </summary>
-        public ITypeSymbol? ElementType { get; }
+        public ITypeSymbol? ElementType { get; } = elementType;
 
         /// <summary>
         /// Whether the property type is an enum.
         /// </summary>
-        public bool IsEnum { get; }
+        public bool IsEnum { get; } = isEnum;
 
         /// <summary>
         /// Whether the property type is a <see cref="System.Guid"/>.
         /// </summary>
-        public bool IsGuid { get; }
+        public bool IsGuid { get; } = isGuid;
 
         /// <summary>
         /// Whether the property type is a primitive numeric or boolean type.
         /// </summary>
-        public bool IsPrimitive { get; }
+        public bool IsPrimitive { get; } = isPrimitive;
 
         /// <summary>
         /// Whether the property type is a string.
         /// </summary>
-        public bool IsString { get; }
+        public bool IsString { get; } = isString;
 
         /// <summary>
         /// Whether the property is a complex type requiring nested binding.
         /// </summary>
-        public bool IsComplex { get; }
+        public bool IsComplex { get; } = isComplex;
 
         /// <summary>
         /// For complex and collection of complex properties, the list of child
         /// properties discovered on the element type. Empty for primitive or
         /// simple collection properties.
         /// </summary>
-        public List<BoundProperty> Children { get; }
+        public List<BoundProperty> Children { get; } = children ?? new List<BoundProperty>();
     }
 
     /// <summary>

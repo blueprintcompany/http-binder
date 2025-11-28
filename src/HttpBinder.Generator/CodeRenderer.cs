@@ -53,7 +53,7 @@ namespace HttpBinder.Generator
 
         private static void RenderBindMethod(IndentedStringBuilder indent, BoundType model)
         {
-            var typeName = model.TypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            var typeName = GetTypeName(model.TypeSymbol);
             indent.AppendLine($"public static async System.Threading.Tasks.ValueTask<{typeName}> BindAsync(Microsoft.AspNetCore.Http.HttpContext ctx)");
             indent.AppendLine("{");
             indent.Indent();
@@ -77,7 +77,7 @@ namespace HttpBinder.Generator
             if (model.Constructor != null && model.Constructor.Parameters.Length > 0)
             {
                 // Constructor initialisation
-                indent.Append($"var result = new {GetTypeName(model.TypeSymbol)}(");
+                indent.Append($"var result = new {typeName}(");
                 indent.AppendLine();
                 indent.Indent();
                 for (int i = 0; i < model.Constructor.Parameters.Length; i++)
@@ -100,17 +100,17 @@ namespace HttpBinder.Generator
                 {
                     indent.AppendLine($"result.{prop.Name} = {prop.Name};");
                 }
-                indent.AppendLine("return new(result);");
+                indent.AppendLine($"return result;");
             }
             else
             {
                 // Parameterless constructor path
-                indent.AppendLine($"var result = new {GetTypeName(model.TypeSymbol)}();");
+                indent.AppendLine($"var result = new {typeName}();");
                 foreach (var prop in model.Properties)
                 {
                     indent.AppendLine($"result.{prop.Name} = {prop.Name};");
                 }
-                indent.AppendLine("return new(result);");
+                indent.AppendLine($"return result;");
             }
             indent.Unindent();
             indent.AppendLine("}");
@@ -211,20 +211,12 @@ namespace HttpBinder.Generator
         {
             var varName = prop.Name;
             // Determine which source to enumerate keys from
-            string keysAccessor;
-            switch (prop.Source)
+            string keysAccessor = prop.Source switch
             {
-                case SourceKind.Query:
-                    keysAccessor = "query.Keys";
-                    break;
-                case SourceKind.Route:
-                    keysAccessor = "route.Keys";
-                    break;
-                case SourceKind.Form:
-                default:
-                    keysAccessor = formNeeded ? "form.Keys" : "ctx.Request.Form.Keys";
-                    break;
-            }
+                SourceKind.Query => "query.Keys",
+                SourceKind.Route => "route.Keys",
+                _ => formNeeded ? "form.Keys" : "ctx.Request.Form.Keys",
+            };
             // Start iteration over keys
             indent.AppendLine($"var prefixCollection = \"{prop.KeyName}[\";");
             indent.AppendLine($"foreach (var key in {keysAccessor})");
