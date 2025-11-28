@@ -6,6 +6,7 @@
 		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
 	</PropertyGroup>
 	<ItemGroup>
+		<ProjectReference Include="..\HttpBinder.Generator.Abstractions\HttpBinder.Generator.Abstractions.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
 		<ProjectReference Include="..\HttpBinder.Generator\HttpBinder.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>
 </Project>

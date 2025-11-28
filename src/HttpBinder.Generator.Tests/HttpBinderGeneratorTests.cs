@@ -13,15 +13,18 @@ public class HttpBinderGeneratorTests
             ReferenceAssemblies = ReferenceAssemblies.Net.Net90
         };
 
-        context.TestCode = "class Dummy { }";
+        context.TestCode = @"
+            [HttpBinder(HttpBinderType = HttpBinderType.Form)]
+            public partial class UserQueryRequest : PagedRequestBase
+            {
+                public string? Search { get; set; }
+            }
+        ";
 
         // List of expected generated sources
-        context.TestState.GeneratedSources.Add((typeof(HttpBinderGenerator), "Sample.g.cs", """
-        internal static class Sample
-        {
-            public const string AssemblyName = "TestProject";
-        }
-        """));
+        context.TestState.GeneratedSources.Add(
+            (typeof(HttpBinderGenerator), AttributeHelpers.Name, AttributeHelpers.Source)
+        );
 
         await context.RunAsync(TestContext.Current!.Execution.CancellationToken);
     }

@@ -5,8 +5,10 @@ using Microsoft.CodeAnalysis.Text;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 
+[assembly: InternalsVisibleTo("HttpBinder.Generator.Tests")]
 namespace HttpBinder.Generator
 {
     /// <summary>
@@ -25,10 +27,7 @@ namespace HttpBinder.Generator
                 .RegisterPostInitializationOutput(ctx =>
                 {
                     ctx.AddEmbeddedAttributeDefinition();
-                    foreach (var attribute in AttributeHelpers.List)
-                    {
-                        ctx.AddSource(attribute.FileName, SourceText.From(attribute.Source, Encoding.UTF8));
-                    }
+                    ctx.AddSource(AttributeHelpers.Name, SourceText.From(AttributeHelpers.Source, Encoding.UTF8));
                 });
 
 
@@ -50,9 +49,21 @@ namespace HttpBinder.Generator
             context.RegisterSourceOutput(modelProvider, (spc, model) =>
             {
                 var source = CodeRenderer.Render(model);
-                var hintName = $"HttpBinder.{model.TypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).Replace('.', '_')}.g.cs";
+                var hintName = GetHintName(model.TypeSymbol);
                 spc.AddSource(hintName, source);
             });
+
+            static string GetHintName(INamedTypeSymbol type)
+            {
+                // Use simple name only; guaranteed filename-safe except for generics
+                var name = type.Name;
+
+                // Handle generic types since Roslyn includes `<>`
+                name = name.Replace('<', '_')
+                           .Replace('>', '_');
+
+                return $"{name}.g.cs";
+            }
         }
 
         /// <summary>

@@ -82,15 +82,14 @@ namespace HttpBinder.Generator
                 indent.Indent();
                 for (int i = 0; i < model.Constructor.Parameters.Length; i++)
                 {
-                    var mapping = model.ConstructorMapping[i];
-                    var propName = mapping.property.Name;
+                    var (_, property) = model.ConstructorMapping[i];
                     if (i < model.Constructor.Parameters.Length - 1)
                     {
-                        indent.AppendLine($"{propName},");
+                        indent.AppendLine($"{property.Name},");
                     }
                     else
                     {
-                        indent.AppendLine($"{propName}");
+                        indent.AppendLine($"{property.Name}");
                     }
                 }
                 indent.Unindent();
