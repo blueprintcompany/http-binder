@@ -22,14 +22,13 @@
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all" />
 		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" PrivateAssets="all" />
 	</ItemGroup>
-	<ItemGroup>
-	  <None Remove="bin\Debug\netstandard2.0\\HttpBinder.Generator.dll" />
-	</ItemGroup>
 	<!-- This ensures the library will be packaged as a source generator when we use `dotnet pack` -->
 	<ItemGroup>
-		<None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+		<None Include="$(OutputPath)\HttpBinder.Generator.Abstractions.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+		<None Include="$(OutputPath)\HttpBinder.Generator.Abstractions.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="false" />
+		<None Include="$(OutputPath)\HttpBinder.Generator.Abstractions.xml" Pack="true" PackagePath="lib\netstandard2.0" Visible="false" />
 	</ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\HttpBinder.Generator.Abstractions\HttpBinder.Generator.Abstractions.csproj" PrivateAssets="none" ReferenceOutputAssembly="true" />
+		<ProjectReference Include="..\HttpBinder.Generator.Abstractions\HttpBinder.Generator.Abstractions.csproj"  />
 	</ItemGroup>
 </Project>
