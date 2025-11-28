@@ -1,5 +1,5 @@
 <Solution>
-  <Project Path="src/HttpBinder.Generator.Attributes/HttpBinder.Generator.Attributes.csproj" Id="9ec9d442-c24a-415a-a00d-388c2a5da534" />
+  <Project Path="src/HttpBinder.Generator.Abstractions/HttpBinder.Generator.Abstractions.csproj" />
   <Project Path="src/HttpBinder.Generator.Tests/HttpBinder.Generator.Tests.csproj" />
   <Project Path="src/HttpBinder.Generator/HttpBinder.Generator.csproj" />
   <Project Path="src/HttpBinder.Sample/Sample.csproj" />

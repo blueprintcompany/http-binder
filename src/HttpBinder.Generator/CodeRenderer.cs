@@ -34,7 +34,7 @@ namespace HttpBinder.Generator
             var indent = new IndentedStringBuilder(sb, indentLevel);
             var typeKindKeyword = typeSymbol.IsRecord
                 ? "record"
-                : "class"
+                : "class";
             indent.AppendLine($"partial {typeKindKeyword} {typeSymbol.Name}");
             indent.AppendLine("{");
             indent.Indent();

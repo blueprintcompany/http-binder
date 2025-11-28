@@ -1,8 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<!-- Target netstandard2.0 so the generator can run in any host. -->
 		<TargetFramework>netstandard2.0</TargetFramework>
-		<!-- Emit the compiled DLL as an analyzer and prevent it from being included in the build output. -->
 		<OutputItemType>Analyzer</OutputItemType>
 		<IncludeBuildOutput>false</IncludeBuildOutput>
 		<LangVersion>Latest</LangVersion>
@@ -24,9 +22,14 @@
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all" />
 		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" PrivateAssets="all" />
 	</ItemGroup>
+	<ItemGroup>
+	  <None Remove="bin\Debug\netstandard2.0\\HttpBinder.Generator.dll" />
+	</ItemGroup>
 	<!-- This ensures the library will be packaged as a source generator when we use `dotnet pack` -->
 	<ItemGroup>
-		<None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true"
-			PackagePath="analyzers/dotnet/cs" Visible="false" />
+		<None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\HttpBinder.Generator.Abstractions\HttpBinder.Generator.Abstractions.csproj" PrivateAssets="none" ReferenceOutputAssembly="true" />
 	</ItemGroup>
 </Project>

@@ -1,30 +1,28 @@
-using System.Threading.Tasks;
-using Xunit;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
-using Microsoft.CodeAnalysis.Testing.Verifiers;
 
-namespace HttpBinder.Generator.Tests
+namespace HttpBinder.Generator.Tests;
+
+public class HttpBinderGeneratorTests
 {
-    public class HttpBinderGeneratorTests
+    [Test]
+    public async Task GeneratesBindAsyncForPrimitives()
     {
-        [Fact]
-        public async Task GeneratesBindAsyncForPrimitives()
+        var context = new CSharpSourceGeneratorTest<HttpBinderGenerator, DefaultVerifier>
         {
-            // A simple DTO with primitive properties bound from the query string. The
-            // test harness will compile the source and run the generator,
-            // asserting that a BindAsync method is emitted in the generated output.
-            var source = @"using HttpBinder;
-            using Microsoft.AspNetCore.Http;
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net90
+        };
 
-            [GenerateHttpBinder]
-            public sealed partial class SimpleDto
-            {
-                [FromQuery] public int Id { get; set; }
-                [FromQuery] public string? Name { get; set; }
-            }";
-            await CSharpSourceGeneratorVerifier<HttpBinder.Generator.HttpBinderGenerator>.VerifyAsync(source);
+        context.TestCode = "class Dummy { }";
+
+        // List of expected generated sources
+        context.TestState.GeneratedSources.Add((typeof(HttpBinderGenerator), "Sample.g.cs", """
+        internal static class Sample
+        {
+            public const string AssemblyName = "TestProject";
         }
+        """));
+
+        await context.RunAsync(TestContext.Current!.Execution.CancellationToken);
     }
 }

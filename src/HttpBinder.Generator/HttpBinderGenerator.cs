@@ -21,19 +21,20 @@ namespace HttpBinder.Generator
     {
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
-            // Embed marker and parameter source attributes into the user's
-            // compilation. These attributes are defined in the HttpBinder
-            // namespace and exposed to the consumer without requiring a
-            // separate assembly reference.
-            foreach (var attribute in AttributeHelpers.List)
-            {
-                context.RegisterPostInitializationOutput(ctx => ctx.AddSource(attribute.FileName, SourceText.From(attribute.Source, Encoding.UTF8)));
-            }
+            context
+                .RegisterPostInitializationOutput(ctx =>
+                {
+                    ctx.AddEmbeddedAttributeDefinition();
+                    foreach (var attribute in AttributeHelpers.List)
+                    {
+                        ctx.AddSource(attribute.FileName, SourceText.From(attribute.Source, Encoding.UTF8));
+                    }
+                });
 
 
             // Discover candidate types annotated with [HttpBinder]
             var candidateTypes = context.SyntaxProvider.ForAttributeWithMetadataName(
-                "HttpBinder.HttpBinderAttribute",
+                "HttpBinder.Generator.HttpBinderAttribute",
                 static (node, ct) => node is TypeDeclarationSyntax,
                 static (ctx, ct) =>
                 {
