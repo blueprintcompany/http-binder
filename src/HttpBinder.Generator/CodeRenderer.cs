@@ -1,7 +1,6 @@
 using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace HttpBinder.Generator
@@ -17,16 +16,11 @@ namespace HttpBinder.Generator
             sb.AppendLine();
 
             var typeSymbol = model.TypeSymbol;
-            var ns = typeSymbol.ContainingNamespace.ToDisplayString();
-            var hasNs = !string.IsNullOrWhiteSpace(ns) && ns != "<global namespace>";
 
-            if (hasNs)
-            {
-                sb.AppendLine($"namespace {ns}");
-                sb.AppendLine("{");
-            }
+            sb.AppendLine($"namespace {typeSymbol.ContainingNamespace.ToDisplayString()}");
+            sb.AppendLine("{");
 
-            var indent = new IndentedStringBuilder(sb, hasNs ? 1 : 0);
+            var indent = new IndentedStringBuilder(sb, 1);
             var typeKind = typeSymbol.IsRecord ? "record" : "class";
 
             indent.AppendLine($"partial {typeKind} {typeSymbol.Name}");
@@ -39,21 +33,14 @@ namespace HttpBinder.Generator
             indent.Unindent();
             indent.AppendLine("}");
 
-            if (hasNs)
-            {
-                sb.AppendLine("}");
-            }
+            sb.AppendLine("}");
 
             return sb.ToString();
         }
 
-        // ---------------------------------------------------------------------
-        //  BindAsync
-        // ---------------------------------------------------------------------
-
         private static void RenderBindMethod(IndentedStringBuilder indent, BoundType model)
         {
-            var targetTypeName = GetTypeName(model.TypeSymbol);
+            var targetTypeName = Utilities.GetFullTypeName(model.TypeSymbol);
 
             var requiresForm = RequiresForm(model);
 
@@ -85,7 +72,15 @@ namespace HttpBinder.Generator
 
         private static bool RequiresForm(BoundType model)
         {
-            bool NeedsForm(BoundProperty p)
+            foreach (var p in model.Properties)
+            {
+                if (NeedsForm(p))
+                    return true;
+            }
+
+            return false;
+
+            static bool NeedsForm(BoundProperty p)
             {
                 if (p.Source == SourceKind.Form)
                     return true;
@@ -98,19 +93,7 @@ namespace HttpBinder.Generator
 
                 return false;
             }
-
-            foreach (var p in model.Properties)
-            {
-                if (NeedsForm(p))
-                    return true;
-            }
-
-            return false;
         }
-
-        // ---------------------------------------------------------------------
-        //  Per-property binding
-        // ---------------------------------------------------------------------
 
         private static void GeneratePropertyBinding(
             IndentedStringBuilder indent,
@@ -118,7 +101,7 @@ namespace HttpBinder.Generator
             bool requiresForm)
         {
             var localName = prop.Name;
-            var typeName = GetTypeName(prop.Symbol.Type);
+            var typeName = Utilities.GetFullTypeName(prop.Symbol.Type);
 
             EmitLocalDeclaration(indent, prop, localName, typeName);
 
@@ -168,9 +151,6 @@ namespace HttpBinder.Generator
             indent.AppendLine("}");
         }
 
-        // ---------------------------------------------------------------------
-        //  Simple property binding
-        // ---------------------------------------------------------------------
 
         private static void EmitSimpleBinding(
             IndentedStringBuilder indent,
@@ -240,7 +220,7 @@ namespace HttpBinder.Generator
 
             if (prop.IsEnum)
             {
-                var enumName = GetTypeName(prop.Symbol.Type);
+                var enumName = Utilities.GetFullTypeName(prop.Symbol.Type);
                 indent.AppendLine(
                     $"if ({valueVar} != null && global::System.Enum.TryParse<{enumName}>({valueVar}, true, out var e)) {localName} = e;");
                 return;
@@ -254,12 +234,8 @@ namespace HttpBinder.Generator
                 return;
             }
 
-            indent.AppendLine($"// unsupported type: {GetTypeName(prop.Symbol.Type)}");
+            indent.AppendLine($"// unsupported type: {Utilities.GetFullTypeName(prop.Symbol.Type)}");
         }
-
-        // ---------------------------------------------------------------------
-        //  Complex property binding
-        // ---------------------------------------------------------------------
 
         private static void EmitComplexCall(
             IndentedStringBuilder indent,
@@ -379,7 +355,7 @@ namespace HttpBinder.Generator
 
             if (elemType is INamedTypeSymbol en && en.TypeKind == TypeKind.Enum)
             {
-                var enName = GetTypeName(elemType);
+                var enName = Utilities.GetFullTypeName(elemType);
                 indent.AppendLine(
                     $"if ({valueVar} != null && global::System.Enum.TryParse<{enName}>({valueVar}, true, out var e)) {listName}[index] = e;");
                 return;
@@ -389,10 +365,6 @@ namespace HttpBinder.Generator
             indent.AppendLine(
                 $"if ({valueVar} != null && {parse}({valueVar}, out var pv)) {listName}[index] = pv;");
         }
-
-        // ---------------------------------------------------------------------
-        //  Complex helper generation
-        // ---------------------------------------------------------------------
 
         private static void RenderComplexHelpers(IndentedStringBuilder indent, BoundType model)
         {
@@ -448,7 +420,7 @@ namespace HttpBinder.Generator
             ITypeSymbol type,
             List<BoundProperty> children)
         {
-            var typeName = GetTypeName(type);
+            var typeName = Utilities.GetFullTypeName(type);
             var helperName = $"Bind_{GetSanitisedTypeName(type)}";
 
             indent.AppendLine(
@@ -459,7 +431,7 @@ namespace HttpBinder.Generator
             // locals
             foreach (var c in children)
             {
-                var tn = GetTypeName(c.Symbol.Type);
+                var tn = Utilities.GetFullTypeName(c.Symbol.Type);
                 if (c.IsCollection)
                 {
                     indent.AppendLine($"{tn} {c.Name} = new {tn}();");
@@ -587,16 +559,11 @@ namespace HttpBinder.Generator
             indent.AppendLine("}");
         }
 
-        // ---------------------------------------------------------------------
-        //  Helpers
-        // ---------------------------------------------------------------------
 
-        private static string GetTypeName(ITypeSymbol type)
-            => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
         private static string GetSanitisedTypeName(ITypeSymbol type)
         {
-            var raw = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+            var raw = Utilities.GetMinimalTypeName(type);
             var sb = new StringBuilder(raw.Length);
 
             foreach (var ch in raw)
@@ -607,7 +574,7 @@ namespace HttpBinder.Generator
 
         private static string GetTryParseMethod(ITypeSymbol type)
         {
-            var full = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            var full = Utilities.GetFullTypeName(type);
 
             return full switch
             {

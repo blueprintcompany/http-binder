@@ -151,18 +151,16 @@ namespace HttpBinder.Generator
             var boundProperties = propertySymbols.Select(BuildBoundProperty).ToList();
 
             // Apply default source if property has no override
-            foreach (var prop in boundProperties)
+            foreach (var properties in boundProperties)
             {
-                if (prop.Source == SourceKind.Form && classDefaultSource != SourceKind.Form)
+                if (properties.Source == SourceKind.Form && classDefaultSource != SourceKind.Form)
                 {
-                    bool hasOverride = prop.Symbol.GetAttributes()
-                        .Any(a => a.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                                  is "global::HttpBinder.BindFromFormAttribute"
-                                  or "global::HttpBinder.BindFromQueryAttribute"
-                                  or "global::HttpBinder.BindFromRouteAttribute");
+                    bool hasOverride = properties.Symbol.GetAttributes()
+                        .Any(a => Utilities.GetFullTypeName(a.AttributeClass!)
+                                  == "global::HttpBinder.BindFromAttribute");
 
                     if (!hasOverride)
-                        prop.Source = classDefaultSource;
+                        properties.Source = classDefaultSource;
                 }
             }
 
@@ -193,55 +191,52 @@ namespace HttpBinder.Generator
 
         private static BoundProperty BuildBoundProperty(IPropertySymbol propSymbol)
         {
-            // Detect attribute overrides
-            var source = SourceKind.Form;
+            SourceKind source = SourceKind.Form; // default if no override
             string? customName = null;
 
             foreach (var attr in propSymbol.GetAttributes())
             {
-                var name = attr.AttributeClass?.ToDisplayString();
+                var fullName = attr.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-                switch (name)
+                if (fullName == "global::HttpBinder.BindFromAttribute")
                 {
-                    case "HttpBinder.BindFromFormAttribute":
-                        source = SourceKind.Form;
-                        break;
-
-                    case "HttpBinder.BindFromQueryAttribute":
-                        source = SourceKind.Query;
-                        break;
-
-                    case "HttpBinder.BindFromRouteAttribute":
-                        source = SourceKind.Route;
-                        break;
-
-                    case "HttpBinder.BindFormFieldAttribute":
-                        if (attr.ConstructorArguments.Length == 1 &&
-                            attr.ConstructorArguments[0].Value is string s)
+                    // Positional argument: HttpBinderType
+                    if (attr.ConstructorArguments.Length == 1 &&
+                        attr.ConstructorArguments[0].Value is int raw)
+                    {
+                        source = raw switch
                         {
+                            1 => SourceKind.Query,
+                            2 => SourceKind.Route,
+                            _ => SourceKind.Form
+                        };
+                    }
+
+                    // Named argument: Name = "..."
+                    foreach (var named in attr.NamedArguments)
+                    {
+                        if (named.Key == "Name" && named.Value.Value is string s)
                             customName = s;
-                        }
-                        break;
+                    }
                 }
             }
 
             var keyName = customName ?? propSymbol.Name;
 
-            // Determine core type info
             var type = propSymbol.Type;
             var isNullable = propSymbol.NullableAnnotation == NullableAnnotation.Annotated;
 
-            if (type is INamedTypeSymbol nt &&
-                nt.IsGenericType &&
-                nt.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
+            if (type is INamedTypeSymbol namedTypeSymbol &&
+                namedTypeSymbol.IsGenericType &&
+                namedTypeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
             {
-                type = nt.TypeArguments[0];
+                type = namedTypeSymbol.TypeArguments[0];
                 isNullable = true;
             }
 
             var isString = type.SpecialType == SpecialType.System_String;
             var isEnum = type.TypeKind == TypeKind.Enum;
-            var isGuid = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Guid";
+            var isGuid = Utilities.GetFullTypeName(type) == "global::System.Guid";
 
             var isPrimitive = type.SpecialType is
                 SpecialType.System_Boolean or SpecialType.System_Byte or SpecialType.System_SByte
@@ -287,9 +282,7 @@ namespace HttpBinder.Generator
 
                 if (isComplex && type is INamedTypeSymbol typeNamed)
                 {
-                    children = GetAllInstanceProperties(typeNamed)
-                        .Select(BuildBoundProperty)
-                        .ToList();
+                    children = [.. GetAllInstanceProperties(typeNamed).Select(BuildBoundProperty)];
                 }
             }
             else
@@ -301,11 +294,11 @@ namespace HttpBinder.Generator
 
                 if (elementType is not null)
                 {
-                    if (elementType is INamedTypeSymbol nte &&
-                        nte.IsGenericType &&
-                        nte.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
+                    if (elementType is INamedTypeSymbol namedTypeSymbol &&
+                        namedTypeSymbol.IsGenericType &&
+                        namedTypeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
                     {
-                        elementType = nte.TypeArguments[0];
+                        elementType = namedTypeSymbol.TypeArguments[0];
                     }
 
                     elementIsString = elementType.SpecialType == SpecialType.System_String;
@@ -323,9 +316,7 @@ namespace HttpBinder.Generator
 
                     if (isComplex && elementType is INamedTypeSymbol elementNamed)
                     {
-                        children = GetAllInstanceProperties(elementNamed)
-                            .Select(BuildBoundProperty)
-                            .ToList();
+                        children = [.. GetAllInstanceProperties(elementNamed).Select(BuildBoundProperty)];
                     }
                 }
                 else
