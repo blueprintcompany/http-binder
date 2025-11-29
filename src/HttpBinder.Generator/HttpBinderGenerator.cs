@@ -196,13 +196,11 @@ namespace HttpBinder.Generator
 
             foreach (var attr in propSymbol.GetAttributes())
             {
-                var fullName = attr.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                var fullName = Utilities.GetFullTypeName(attr.AttributeClass!);
 
                 if (fullName == "global::HttpBinder.BindFromAttribute")
                 {
-                    // Positional argument: HttpBinderType
-                    if (attr.ConstructorArguments.Length == 1 &&
-                        attr.ConstructorArguments[0].Value is int raw)
+                    if (attr.ConstructorArguments[0].Value is int raw)
                     {
                         source = raw switch
                         {
@@ -212,7 +210,6 @@ namespace HttpBinder.Generator
                         };
                     }
 
-                    // Named argument: Name = "..."
                     foreach (var named in attr.NamedArguments)
                     {
                         if (named.Key == "Name" && named.Value.Value is string s)
