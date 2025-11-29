@@ -15,6 +15,8 @@ namespace HttpBinder.Generator
     // TODO:
     // - Support ignoring attribute
     // - Support IFormFile and IFormFileCollection (add analyzer too)
+    // - Analyzer for dictionaries
+    // - Analyzer for lists of lists.
     [Generator]
     public sealed class HttpBinderGenerator : IIncrementalGenerator
     {
@@ -191,31 +193,8 @@ namespace HttpBinder.Generator
             (bool isNullable, bool isEnum, bool isGuid, bool isPrimitive, bool isString, bool isComplex) = GetPropertyAttributes(type);
 
             // Detect collections
-            var isCollection = false;
-            ITypeSymbol? elementType = null;
-
-            if (propSymbol.Type is IArrayTypeSymbol arr)
-            {
-                isCollection = true;
-                elementType = arr.ElementType;
-            }
-            else if (propSymbol.Type is INamedTypeSymbol named &&
-                     named.IsGenericType &&
-                     named.TypeArguments.Length == 1)
-            {
-                var baseName = named.ConstructedFrom.ToDisplayString();
-
-                if (baseName.StartsWith("System.Collections.Generic.IEnumerable", StringComparison.Ordinal) ||
-                    baseName.StartsWith("System.Collections.Generic.IList", StringComparison.Ordinal) ||
-                    baseName.StartsWith("System.Collections.Generic.List", StringComparison.Ordinal) ||
-                    baseName.StartsWith("System.Collections.Generic.ICollection", StringComparison.Ordinal) ||
-                    baseName.StartsWith("System.Collections.Generic.IReadOnlyCollection", StringComparison.Ordinal) ||
-                    baseName.StartsWith("System.Collections.Generic.IReadOnlyList", StringComparison.Ordinal))
-                {
-                    isCollection = true;
-                    elementType = named.TypeArguments[0];
-                }
-            }
+            var collectionType = FindCollectionType(type);
+            var isCollection = collectionType is not null;
 
             List<BoundProperty>? children = null;
 
@@ -228,11 +207,11 @@ namespace HttpBinder.Generator
             }
             else
             {
-                if (elementType is not null)
+                if (collectionType is not null)
                 {
-                    (bool _, bool elementIsEnum, bool elementIsGuid, bool elementIsPrimitive, bool elementIsString, bool elementIsComplex) = GetPropertyAttributes(elementType);
+                    (bool _, bool collectionTypeIsEnum, bool collectionTypeIsGuid, bool collectionTypeIsPrimitive, bool collectionTypeIsString, bool collectionTypeIsComplex) = GetPropertyAttributes(collectionType);
 
-                    if (elementIsComplex && elementType is INamedTypeSymbol elementNamed)
+                    if (collectionTypeIsComplex && collectionType is INamedTypeSymbol elementNamed)
                     {
                         children = [.. GetAllInstanceProperties(elementNamed).Select(BuildBoundProperty)];
                     }
@@ -249,7 +228,7 @@ namespace HttpBinder.Generator
                 httpBinderType,
                 isNullable,
                 isCollection,
-                elementType,
+                collectionType,
                 isEnum,
                 isGuid,
                 isPrimitive,
@@ -274,16 +253,50 @@ namespace HttpBinder.Generator
                 var isEnum = typeSymbol.TypeKind == TypeKind.Enum;
                 var isGuid = Utilities.GetFullTypeName(typeSymbol) == "global::System.Guid";
                 var isPrimitive = typeSymbol.SpecialType is
-                    SpecialType.System_Boolean or SpecialType.System_Byte or SpecialType.System_SByte
-                    or SpecialType.System_Int16 or SpecialType.System_UInt16
-                    or SpecialType.System_Int32 or SpecialType.System_UInt32
-                    or SpecialType.System_Int64 or SpecialType.System_UInt64
-                    or SpecialType.System_Single or SpecialType.System_Double
-                    or SpecialType.System_Decimal;
+                    SpecialType.System_Boolean or
+                    SpecialType.System_Byte or
+                    SpecialType.System_SByte or
+                    SpecialType.System_Int16 or
+                    SpecialType.System_UInt16 or
+                    SpecialType.System_Int32 or
+                    SpecialType.System_UInt32 or
+                    SpecialType.System_Int64 or
+                    SpecialType.System_UInt64 or
+                    SpecialType.System_Single or
+                    SpecialType.System_Double or
+                    SpecialType.System_Decimal or
+                    SpecialType.System_Char or
+                    SpecialType.System_String;
 
                 var isComplex = !(isPrimitive || isString || isGuid || isEnum);
 
                 return (isNullable, isGuid, isEnum, isPrimitive, isString, isComplex);
+            }
+
+            static ITypeSymbol? FindCollectionType(ITypeSymbol type)
+            {
+                if (type is IArrayTypeSymbol arr)
+                {
+                    return arr.ElementType;
+                }
+                else if (type is INamedTypeSymbol named &&
+                         named.IsGenericType &&
+                         named.TypeArguments.Length == 1)
+                {
+                    var baseName = named.ConstructedFrom.ToDisplayString();
+
+                    if (baseName.StartsWith("System.Collections.Generic.IEnumerable", StringComparison.Ordinal) ||
+                        baseName.StartsWith("System.Collections.Generic.IList", StringComparison.Ordinal) ||
+                        baseName.StartsWith("System.Collections.Generic.List", StringComparison.Ordinal) ||
+                        baseName.StartsWith("System.Collections.Generic.ICollection", StringComparison.Ordinal) ||
+                        baseName.StartsWith("System.Collections.Generic.IReadOnlyCollection", StringComparison.Ordinal) ||
+                        baseName.StartsWith("System.Collections.Generic.IReadOnlyList", StringComparison.Ordinal))
+                    {
+                        return named.TypeArguments[0];
+                    }
+                }
+
+                return null;
             }
         }
     }

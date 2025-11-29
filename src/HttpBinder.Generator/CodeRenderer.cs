@@ -261,7 +261,7 @@ namespace HttpBinder.Generator
             bool requiresForm)
         {
             var listName = prop.Name;
-            var elemType = prop.ElementType!;
+            var elemType = prop.CollectionType!;
             var key = prop.KeyName;
 
             string keysExpr =
@@ -379,7 +379,7 @@ namespace HttpBinder.Generator
                         RenderComplexHelper(indent, prop.Symbol.Type, prop.Children);
                 }
 
-                if (prop.IsCollection && prop.IsComplex && prop.ElementType is ITypeSymbol elem)
+                if (prop.IsCollection && prop.IsComplex && prop.CollectionType is ITypeSymbol elem)
                 {
                     if (NeedsComplexHelper(elem))
                     {
@@ -539,13 +539,13 @@ namespace HttpBinder.Generator
             indent.AppendLine($"while ({child.Name}.Count <= index) {{ {child.Name}.Add(default!); }}");
             indent.AppendLine($"var elementPrefix = collectionPrefix + index + \"].\";");
 
-            if (child.IsComplex && child.ElementType is ITypeSymbol elemType)
+            if (child.IsComplex && child.CollectionType is ITypeSymbol elemType)
             {
                 var nestedFn = $"Bind_{GetSanitisedTypeName(elemType)}";
                 indent.AppendLine(
                     $"{child.Name}[index] = {nestedFn}(ctx, elementPrefix, form, query, route);");
             }
-            else if (child.ElementType is ITypeSymbol simpleElem)
+            else if (child.CollectionType is ITypeSymbol simpleElem)
             {
                 EmitCollectionElementBinding(
                     indent,

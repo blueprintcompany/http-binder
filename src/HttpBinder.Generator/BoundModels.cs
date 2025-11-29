@@ -10,7 +10,7 @@ namespace HttpBinder.Generator
     /// collection or nested complex type.
     /// </summary>
     internal sealed class BoundProperty(IPropertySymbol symbol, string keyName, HttpBinderType httpBinderType, bool isNullable,
-        bool isCollection, ITypeSymbol? elementType, bool isEnum, bool isGuid, bool isPrimitive,
+        bool isCollection, ITypeSymbol? collectionType, bool isEnum, bool isGuid, bool isPrimitive,
         bool isString, bool isComplex, List<BoundProperty>? children)
     {
 
@@ -53,7 +53,7 @@ namespace HttpBinder.Generator
         /// For collection properties, the element type contained in the
         /// collection. This will be null for non‑collection properties.
         /// </summary>
-        public ITypeSymbol? ElementType { get; } = elementType;
+        public ITypeSymbol? CollectionType { get; } = collectionType;
 
         /// <summary>
         /// Whether the property type is an enum.
