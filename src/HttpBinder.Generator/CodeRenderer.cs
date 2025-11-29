@@ -82,7 +82,7 @@ namespace HttpBinder.Generator
 
             static bool NeedsForm(BoundProperty p)
             {
-                if (p.Source == SourceKind.Form)
+                if (p.HttpBinderType == HttpBinderType.Form)
                     return true;
 
                 foreach (var c in p.Children)
@@ -171,19 +171,19 @@ namespace HttpBinder.Generator
         {
             var key = prop.KeyName;
 
-            switch (prop.Source)
+            switch (prop.HttpBinderType)
             {
-                case SourceKind.Query:
+                case HttpBinderType.Query:
                     indent.AppendLine(
                         $"var {valueVar} = query.TryGetValue(\"{key}\", out var qv) && qv.Count > 0 ? qv.ToString() : null;");
                     break;
 
-                case SourceKind.Route:
+                case HttpBinderType.Route:
                     indent.AppendLine(
                         $"var {valueVar} = route.TryGetValue(\"{key}\", out var rv) ? rv?.ToString() : null;");
                     break;
 
-                case SourceKind.Form:
+                case HttpBinderType.Form:
                 default:
                     if (requiresForm)
                     {
@@ -265,8 +265,8 @@ namespace HttpBinder.Generator
             var key = prop.KeyName;
 
             string keysExpr =
-                prop.Source == SourceKind.Query ? "query.Keys" :
-                prop.Source == SourceKind.Route ? "route.Keys" :
+                prop.HttpBinderType == HttpBinderType.Query ? "query.Keys" :
+                prop.HttpBinderType == HttpBinderType.Route ? "route.Keys" :
                 requiresForm ? "form.Keys" :
                 "ctx.Request.Form.Keys";
 
@@ -295,7 +295,7 @@ namespace HttpBinder.Generator
             }
             else
             {
-                EmitCollectionElementBinding(indent, listName, elemType, prop.Source, requiresForm);
+                EmitCollectionElementBinding(indent, listName, elemType, prop.HttpBinderType, requiresForm);
             }
 
             indent.Unindent();
@@ -306,24 +306,24 @@ namespace HttpBinder.Generator
             IndentedStringBuilder indent,
             string listName,
             ITypeSymbol elemType,
-            SourceKind source,
+            HttpBinderType httpBinderType,
             bool requiresForm)
         {
             var valueVar = $"v_{listName}";
 
-            switch (source)
+            switch (httpBinderType)
             {
-                case SourceKind.Query:
+                case HttpBinderType.Query:
                     indent.AppendLine(
                         $"var {valueVar} = query.TryGetValue(elementPrefix.TrimEnd('.'), out var qv) && qv.Count > 0 ? qv.ToString() : null;");
                     break;
 
-                case SourceKind.Route:
+                case HttpBinderType.Route:
                     indent.AppendLine(
                         $"var {valueVar} = route.TryGetValue(elementPrefix.TrimEnd('.'), out var rv) ? rv?.ToString() : null;");
                     break;
 
-                case SourceKind.Form:
+                case HttpBinderType.Form:
                 default:
                     if (requiresForm)
                     {
@@ -491,19 +491,19 @@ namespace HttpBinder.Generator
         {
             var valueVar = $"value_{child.Name}";
 
-            switch (child.Source)
+            switch (child.HttpBinderType)
             {
-                case SourceKind.Query:
+                case HttpBinderType.Query:
                     indent.AppendLine(
                         $"var {valueVar} = query.TryGetValue({keyVar}, out var qv) && qv.Count > 0 ? qv.ToString() : null;");
                     break;
 
-                case SourceKind.Route:
+                case HttpBinderType.Route:
                     indent.AppendLine(
                         $"var {valueVar} = route.TryGetValue({keyVar}, out var rv) ? rv?.ToString() : null;");
                     break;
 
-                case SourceKind.Form:
+                case HttpBinderType.Form:
                 default:
                     indent.AppendLine(
                         $"var {valueVar} = form != null && form.TryGetValue({keyVar}, out var fv) && fv.Count > 0 ? fv.ToString() : null;");
@@ -519,8 +519,8 @@ namespace HttpBinder.Generator
             string keyVar)
         {
             string keysExpr =
-                child.Source == SourceKind.Query ? "query.Keys" :
-                child.Source == SourceKind.Route ? "route.Keys" :
+                child.HttpBinderType == HttpBinderType.Query ? "query.Keys" :
+                child.HttpBinderType == HttpBinderType.Route ? "route.Keys" :
                 "form?.Keys ?? global::System.Array.Empty<string>()";
 
             indent.AppendLine($"var collectionPrefix = {keyVar} + \"[\";");
@@ -551,8 +551,8 @@ namespace HttpBinder.Generator
                     indent,
                     child.Name,
                     simpleElem,
-                    child.Source,
-                    child.Source == SourceKind.Form);
+                    child.HttpBinderType,
+                    child.HttpBinderType == HttpBinderType.Form);
             }
 
             indent.Unindent();

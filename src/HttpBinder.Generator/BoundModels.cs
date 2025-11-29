@@ -4,24 +4,12 @@ using System.Collections.Generic;
 namespace HttpBinder.Generator
 {
     /// <summary>
-    /// Represents the source from which a property is bound. Properties may be
-    /// explicitly decorated with one of the supported attributes or fall back to
-    /// the default of <see cref="Form"/>.
-    /// </summary>
-    internal enum SourceKind
-    {
-        Form,
-        Query,
-        Route
-    }
-
-    /// <summary>
     /// Represents a single property that will be bound at runtime. This model
     /// captures the semantic information required to generate binding code
     /// including the target name, source and whether the property is a
     /// collection or nested complex type.
     /// </summary>
-    internal sealed class BoundProperty(IPropertySymbol symbol, string keyName, SourceKind source, bool isNullable,
+    internal sealed class BoundProperty(IPropertySymbol symbol, string keyName, HttpBinderType httpBinderType, bool isNullable,
         bool isCollection, ITypeSymbol? elementType, bool isEnum, bool isGuid, bool isPrimitive,
         bool isString, bool isComplex, List<BoundProperty>? children)
     {
@@ -47,7 +35,7 @@ namespace HttpBinder.Generator
         /// route). If none of the explicit attributes are applied the default
         /// source is form.
         /// </summary>
-        public SourceKind Source { get; set; } = source;
+        public HttpBinderType HttpBinderType { get; set; } = httpBinderType;
 
         /// <summary>
         /// Whether the property can accept a null value. Nullable reference
@@ -97,7 +85,7 @@ namespace HttpBinder.Generator
         /// properties discovered on the element type. Empty for primitive or
         /// simple collection properties.
         /// </summary>
-        public List<BoundProperty> Children { get; } = children ?? new List<BoundProperty>();
+        public List<BoundProperty> Children { get; } = children ?? [];
     }
 
     /// <summary>

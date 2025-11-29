@@ -24,30 +24,28 @@ namespace HttpBinder.Generator
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
-            // Add embedded attributes (EmbeddedAttribute + HttpBinderAttribute)
             context.RegisterPostInitializationOutput(ctx =>
             {
                 ctx.AddEmbeddedAttributeDefinition();
                 ctx.AddSource(AttributeHelpers.Name, SourceText.From(AttributeHelpers.Source, Encoding.UTF8));
             });
 
-            // Find attributed types
             var candidateTypes = context.SyntaxProvider.ForAttributeWithMetadataName(
                 "HttpBinder.Generator.HttpBinderAttribute",
                 static (node, _) => node is TypeDeclarationSyntax,
                 static (syntaxCtx, _) => (INamedTypeSymbol)syntaxCtx.TargetSymbol
             );
 
-            // Build models
             var models = candidateTypes.Select((type, _) => BuildModel(type));
 
             // Emit generated files + diagnostics
-            context.RegisterSourceOutput(models, static (spc, model) =>
+            context.RegisterSourceOutput(models, static (sourceProductionContext, model) =>
             {
-                ReportComplexQueryRouteDiagnostics(spc, model);
+                ReportComplexQueryRouteDiagnostics(sourceProductionContext, model);
 
-                var source = CodeRenderer.Render(model); // your existing renderer
-                spc.AddSource(GetHintName(model.TypeSymbol), source);
+                var source = CodeRenderer.Render(model);
+                var hintName = GetHintName(model.TypeSymbol);
+                sourceProductionContext.AddSource(hintName, source);
             });
 
             static string GetHintName(INamedTypeSymbol type)
@@ -61,13 +59,13 @@ namespace HttpBinder.Generator
         {
             foreach (var prop in model.Properties)
             {
-                if (prop.Source is SourceKind.Query or SourceKind.Route)
+                if (prop.HttpBinderType is HttpBinderType.Query or HttpBinderType.Route)
                 {
                     if (!prop.IsComplex)
                         continue;
 
                     var location = prop.Symbol.Locations.FirstOrDefault() ?? Location.None;
-                    var sourceText = prop.Source == SourceKind.Query ? "the query string" : "route data";
+                    var sourceText = prop.HttpBinderType == HttpBinderType.Query ? "the query string" : "route data";
 
                     var diag = Diagnostic.Create(
                         _complexQueryOrRouteComplexType,
@@ -80,10 +78,6 @@ namespace HttpBinder.Generator
                 }
             }
         }
-
-        // -----------------------------------------------------------------
-        // Property collection helpers
-        // -----------------------------------------------------------------
 
         private static IEnumerable<IPropertySymbol> GetAllInstanceProperties(INamedTypeSymbol type)
         {
@@ -119,7 +113,7 @@ namespace HttpBinder.Generator
                     a.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
                     == "global::HttpBinder.Generator.HttpBinderAttribute");
 
-            var classDefaultSource = SourceKind.Form;
+            var classDefaultSource = HttpBinderType.Form;
 
             if (binderAttr is not null)
             {
@@ -133,9 +127,9 @@ namespace HttpBinder.Generator
                         {
                             classDefaultSource = raw switch
                             {
-                                1 => SourceKind.Query,
-                                2 => SourceKind.Route,
-                                _ => SourceKind.Form
+                                1 => HttpBinderType.Query,
+                                2 => HttpBinderType.Route,
+                                _ => HttpBinderType.Form
                             };
                         }
 
@@ -153,14 +147,14 @@ namespace HttpBinder.Generator
             // Apply default source if property has no override
             foreach (var properties in boundProperties)
             {
-                if (properties.Source == SourceKind.Form && classDefaultSource != SourceKind.Form)
+                if (properties.HttpBinderType == HttpBinderType.Form && classDefaultSource != HttpBinderType.Form)
                 {
                     bool hasOverride = properties.Symbol.GetAttributes()
                         .Any(a => Utilities.GetFullTypeName(a.AttributeClass!)
                                   == "global::HttpBinder.BindFromAttribute");
 
                     if (!hasOverride)
-                        properties.Source = classDefaultSource;
+                        properties.HttpBinderType = classDefaultSource;
                 }
             }
 
@@ -191,7 +185,8 @@ namespace HttpBinder.Generator
 
         private static BoundProperty BuildBoundProperty(IPropertySymbol propSymbol)
         {
-            SourceKind source = SourceKind.Form; // default if no override
+            var httpBinderType = HttpBinderType.Form;
+
             string? customName = null;
 
             foreach (var attr in propSymbol.GetAttributes())
@@ -202,11 +197,11 @@ namespace HttpBinder.Generator
                 {
                     if (attr.ConstructorArguments[0].Value is int raw)
                     {
-                        source = raw switch
+                        httpBinderType = raw switch
                         {
-                            1 => SourceKind.Query,
-                            2 => SourceKind.Route,
-                            _ => SourceKind.Form
+                            1 => HttpBinderType.Query,
+                            2 => HttpBinderType.Route,
+                            _ => HttpBinderType.Form
                         };
                     }
 
@@ -325,7 +320,7 @@ namespace HttpBinder.Generator
             return new BoundProperty(
                 propSymbol,
                 keyName,
-                source,
+                httpBinderType,
                 isNullable,
                 isCollection,
                 elementType,
