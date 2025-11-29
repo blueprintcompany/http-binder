@@ -1,3 +1,4 @@
+using HttpBinder.Generator.Analyzers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
@@ -17,14 +18,6 @@ namespace HttpBinder.Generator
     [Generator]
     public sealed class HttpBinderGenerator : IIncrementalGenerator
     {
-        private static readonly DiagnosticDescriptor _complexQueryOrRouteComplexType = new(
-            id: "HB001",
-            title: "Complex types cannot be bound from query or route",
-            messageFormat: "Property '{0}' on type '{1}' is a complex type and cannot be bound from {2}. Use HttpBinderType.Form or [BindFromForm] instead.",
-            category: "HttpBinder",
-            defaultSeverity: DiagnosticSeverity.Warning,
-            isEnabledByDefault: true);
-
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
             context.RegisterPostInitializationOutput(ctx =>
@@ -44,7 +37,7 @@ namespace HttpBinder.Generator
             // Emit generated files + diagnostics
             context.RegisterSourceOutput(models, static (sourceProductionContext, model) =>
             {
-                ReportComplexQueryRouteDiagnostics(sourceProductionContext, model);
+                ComplexTypeDetectedOnRouteOrQueryBinder.ReportDiagnostics(sourceProductionContext, model);
 
                 var source = CodeRenderer.Render(model);
                 var hintName = GetHintName(model.TypeSymbol);
@@ -58,29 +51,7 @@ namespace HttpBinder.Generator
             }
         }
 
-        private static void ReportComplexQueryRouteDiagnostics(SourceProductionContext context, BoundType model)
-        {
-            foreach (var prop in model.Properties)
-            {
-                if (prop.HttpBinderType is HttpBinderType.Query or HttpBinderType.Route)
-                {
-                    if (!prop.IsComplex)
-                        continue;
 
-                    var location = prop.Symbol.Locations.FirstOrDefault() ?? Location.None;
-                    var sourceText = prop.HttpBinderType == HttpBinderType.Query ? "the query string" : "route data";
-
-                    var diag = Diagnostic.Create(
-                        _complexQueryOrRouteComplexType,
-                        location,
-                        prop.Name,
-                        model.TypeSymbol.Name,
-                        sourceText);
-
-                    context.ReportDiagnostic(diag);
-                }
-            }
-        }
 
         private static IEnumerable<IPropertySymbol> GetAllInstanceProperties(INamedTypeSymbol type)
         {
