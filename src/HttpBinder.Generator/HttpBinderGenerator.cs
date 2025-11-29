@@ -11,6 +11,9 @@ using System.Text;
 
 namespace HttpBinder.Generator
 {
+    // TODO:
+    // - Support ignoring attribute
+    // - Support IFormFile and IFormFileCollection (add analyzer too)
     [Generator]
     public sealed class HttpBinderGenerator : IIncrementalGenerator
     {
@@ -83,9 +86,7 @@ namespace HttpBinder.Generator
         {
             var map = new Dictionary<string, IPropertySymbol>(StringComparer.OrdinalIgnoreCase);
 
-            for (var current = type;
-                 current != null && current.SpecialType != SpecialType.System_Object;
-                 current = current.BaseType)
+            for (var current = type; current != null && current.SpecialType != SpecialType.System_Object; current = current.BaseType)
             {
                 foreach (var p in current.GetMembers().OfType<IPropertySymbol>())
                 {
@@ -216,27 +217,7 @@ namespace HttpBinder.Generator
             var keyName = customName ?? propSymbol.Name;
 
             var type = propSymbol.Type;
-            var isNullable = propSymbol.NullableAnnotation == NullableAnnotation.Annotated;
-
-            if (type is INamedTypeSymbol namedTypeSymbol &&
-                namedTypeSymbol.IsGenericType &&
-                namedTypeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
-            {
-                type = namedTypeSymbol.TypeArguments[0];
-                isNullable = true;
-            }
-
-            var isString = type.SpecialType == SpecialType.System_String;
-            var isEnum = type.TypeKind == TypeKind.Enum;
-            var isGuid = Utilities.GetFullTypeName(type) == "global::System.Guid";
-
-            var isPrimitive = type.SpecialType is
-                SpecialType.System_Boolean or SpecialType.System_Byte or SpecialType.System_SByte
-                or SpecialType.System_Int16 or SpecialType.System_UInt16
-                or SpecialType.System_Int32 or SpecialType.System_UInt32
-                or SpecialType.System_Int64 or SpecialType.System_UInt64
-                or SpecialType.System_Single or SpecialType.System_Double
-                or SpecialType.System_Decimal;
+            (bool isNullable, bool isEnum, bool isGuid, bool isPrimitive, bool isString, bool isComplex) = GetPropertyAttributes(type);
 
             // Detect collections
             var isCollection = false;
@@ -265,13 +246,10 @@ namespace HttpBinder.Generator
                 }
             }
 
-            bool isComplex;
             List<BoundProperty>? children = null;
 
             if (!isCollection)
             {
-                isComplex = !(isPrimitive || isString || isGuid || isEnum);
-
                 if (isComplex && type is INamedTypeSymbol typeNamed)
                 {
                     children = [.. GetAllInstanceProperties(typeNamed).Select(BuildBoundProperty)];
@@ -279,34 +257,11 @@ namespace HttpBinder.Generator
             }
             else
             {
-                bool elementIsPrimitive = false;
-                bool elementIsString = false;
-                bool elementIsGuid = false;
-                bool elementIsEnum = false;
-
                 if (elementType is not null)
                 {
-                    if (elementType is INamedTypeSymbol namedTypeSymbol &&
-                        namedTypeSymbol.IsGenericType &&
-                        namedTypeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
-                    {
-                        elementType = namedTypeSymbol.TypeArguments[0];
-                    }
+                    (bool _, bool elementIsEnum, bool elementIsGuid, bool elementIsPrimitive, bool elementIsString, bool elementIsComplex) = GetPropertyAttributes(elementType);
 
-                    elementIsString = elementType.SpecialType == SpecialType.System_String;
-                    elementIsEnum = elementType.TypeKind == TypeKind.Enum;
-                    elementIsGuid = elementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Guid";
-                    elementIsPrimitive = elementType.SpecialType is
-                        SpecialType.System_Boolean or SpecialType.System_Byte or SpecialType.System_SByte
-                        or SpecialType.System_Int16 or SpecialType.System_UInt16
-                        or SpecialType.System_Int32 or SpecialType.System_UInt32
-                        or SpecialType.System_Int64 or SpecialType.System_UInt64
-                        or SpecialType.System_Single or SpecialType.System_Double
-                        or SpecialType.System_Decimal;
-
-                    isComplex = !(elementIsPrimitive || elementIsString || elementIsGuid || elementIsEnum);
-
-                    if (isComplex && elementType is INamedTypeSymbol elementNamed)
+                    if (elementIsComplex && elementType is INamedTypeSymbol elementNamed)
                     {
                         children = [.. GetAllInstanceProperties(elementNamed).Select(BuildBoundProperty)];
                     }
@@ -331,6 +286,34 @@ namespace HttpBinder.Generator
                 isComplex,
                 children
             );
+
+            static (bool isNullable, bool isGuid, bool isEnum, bool isPrimitive, bool isString, bool isComplex) GetPropertyAttributes(ITypeSymbol typeSymbol)
+            {
+                var isNullable = typeSymbol.NullableAnnotation == NullableAnnotation.Annotated;
+
+                if (typeSymbol is INamedTypeSymbol namedTypeSymbol &&
+                    namedTypeSymbol.IsGenericType &&
+                    namedTypeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
+                {
+                    typeSymbol = namedTypeSymbol.TypeArguments[0];
+                    isNullable = true;
+                }
+
+                var isString = typeSymbol.SpecialType == SpecialType.System_String;
+                var isEnum = typeSymbol.TypeKind == TypeKind.Enum;
+                var isGuid = Utilities.GetFullTypeName(typeSymbol) == "global::System.Guid";
+                var isPrimitive = typeSymbol.SpecialType is
+                    SpecialType.System_Boolean or SpecialType.System_Byte or SpecialType.System_SByte
+                    or SpecialType.System_Int16 or SpecialType.System_UInt16
+                    or SpecialType.System_Int32 or SpecialType.System_UInt32
+                    or SpecialType.System_Int64 or SpecialType.System_UInt64
+                    or SpecialType.System_Single or SpecialType.System_Double
+                    or SpecialType.System_Decimal;
+
+                var isComplex = !(isPrimitive || isString || isGuid || isEnum);
+
+                return (isNullable, isGuid, isEnum, isPrimitive, isString, isComplex);
+            }
         }
     }
 }
