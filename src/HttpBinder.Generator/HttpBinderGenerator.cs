@@ -1,5 +1,4 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using System;
@@ -9,323 +8,346 @@ using System.Runtime.CompilerServices;
 using System.Text;
 
 [assembly: InternalsVisibleTo("HttpBinder.Generator.Tests")]
+
 namespace HttpBinder.Generator
 {
-    /// <summary>
-    /// Main implementation of the HttpBinder incremental source generator. This
-    /// generator scans the compilation for types annotated with
-    /// <c>[HttpBinder.HttpBinder]</c> and emits a partial class with a
-    /// <c>BindAsync(HttpContext)</c> method that binds values from route,
-    /// query and form sources.
-    /// </summary>
     [Generator]
     public sealed class HttpBinderGenerator : IIncrementalGenerator
     {
+        private static readonly DiagnosticDescriptor _complexQueryOrRouteComplexType = new(
+            id: "HB001",
+            title: "Complex types cannot be bound from query or route",
+            messageFormat: "Property '{0}' on type '{1}' is a complex type and cannot be bound from {2}. Use HttpBinderType.Form or [BindFromForm] instead.",
+            category: "HttpBinder",
+            defaultSeverity: DiagnosticSeverity.Warning,
+            isEnabledByDefault: true);
+
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
-            context
-                .RegisterPostInitializationOutput(ctx =>
-                {
-                    ctx.AddEmbeddedAttributeDefinition();
-                    ctx.AddSource(AttributeHelpers.Name, SourceText.From(AttributeHelpers.Source, Encoding.UTF8));
-                });
+            // Add embedded attributes (EmbeddedAttribute + HttpBinderAttribute)
+            context.RegisterPostInitializationOutput(ctx =>
+            {
+                ctx.AddEmbeddedAttributeDefinition();
+                ctx.AddSource(AttributeHelpers.Name, SourceText.From(AttributeHelpers.Source, Encoding.UTF8));
+            });
 
-
-            // Discover candidate types annotated with [HttpBinder]
+            // Find attributed types
             var candidateTypes = context.SyntaxProvider.ForAttributeWithMetadataName(
                 "HttpBinder.Generator.HttpBinderAttribute",
-                static (node, ct) => node is TypeDeclarationSyntax,
-                static (ctx, ct) =>
-                {
-                    var typeDecl = (TypeDeclarationSyntax)ctx.TargetNode;
-                    var symbol = (INamedTypeSymbol)ctx.TargetSymbol;
-                    return symbol;
-                });
+                static (node, _) => node is TypeDeclarationSyntax,
+                static (syntaxCtx, _) => (INamedTypeSymbol)syntaxCtx.TargetSymbol
+            );
 
-            // Build a bound model for each candidate type
-            var modelProvider = candidateTypes.Select((typeSymbol, ct) => BuildModel(typeSymbol));
+            // Build models
+            var models = candidateTypes.Select((type, _) => BuildModel(type));
 
-            // Generate source for each model
-            context.RegisterSourceOutput(modelProvider, (spc, model) =>
+            // Emit generated files + diagnostics
+            context.RegisterSourceOutput(models, static (spc, model) =>
             {
-                var source = CodeRenderer.Render(model);
-                var hintName = GetHintName(model.TypeSymbol);
-                spc.AddSource(hintName, source);
+                ReportComplexQueryRouteDiagnostics(spc, model);
+
+                var source = CodeRenderer.Render(model); // your existing renderer
+                spc.AddSource(GetHintName(model.TypeSymbol), source);
             });
 
             static string GetHintName(INamedTypeSymbol type)
             {
-                // Use simple name only; guaranteed filename-safe except for generics
-                var name = type.Name;
-
-                // Handle generic types since Roslyn includes `<>`
-                name = name.Replace('<', '_')
-                           .Replace('>', '_');
-
+                var name = type.Name.Replace('<', '_').Replace('>', '_');
                 return $"{name}.g.cs";
             }
         }
 
-        /// <summary>
-        /// Constructs a bound model describing the target type. This includes
-        /// collecting all properties (including inherited ones), determining
-        /// source information via attributes, identifying primitive or complex
-        /// types and choosing an appropriate constructor for initialisation.
-        /// </summary>
-        private static BoundType BuildModel(INamedTypeSymbol typeSymbol)
+        private static void ReportComplexQueryRouteDiagnostics(SourceProductionContext context, BoundType model)
         {
-            // Gather properties from the type and its base types. Derived
-            // properties override base definitions by name (case insensitive).
-            var propertyMap = new Dictionary<string, IPropertySymbol>(StringComparer.OrdinalIgnoreCase);
-            for (var current = typeSymbol; current != null && current.SpecialType != SpecialType.System_Object; current = current.BaseType)
+            foreach (var prop in model.Properties)
             {
-                foreach (var member in current.GetMembers().OfType<IPropertySymbol>())
+                if (prop.Source is SourceKind.Query or SourceKind.Route)
                 {
-                    if (member.IsStatic) continue;
-                    // Accept public or protected properties
-                    if (member.DeclaredAccessibility != Accessibility.Public
-                        && member.DeclaredAccessibility != Accessibility.Protected
-                        && member.DeclaredAccessibility != Accessibility.ProtectedOrInternal)
+                    if (!prop.IsComplex)
                         continue;
-                    if (!propertyMap.ContainsKey(member.Name))
-                    {
-                        propertyMap[member.Name] = member;
-                    }
+
+                    var location = prop.Symbol.Locations.FirstOrDefault() ?? Location.None;
+                    var sourceText = prop.Source == SourceKind.Query ? "the query string" : "route data";
+
+                    var diag = Diagnostic.Create(
+                        _complexQueryOrRouteComplexType,
+                        location,
+                        prop.Name,
+                        model.TypeSymbol.Name,
+                        sourceText);
+
+                    context.ReportDiagnostic(diag);
                 }
             }
-            var boundProperties = new List<BoundProperty>();
-            foreach (var propSymbol in propertyMap.Values)
-            {
-                boundProperties.Add(BuildBoundProperty(propSymbol));
-            }
-            // Determine the constructor used for initialisation. Prefer the
-            // constructor with the largest parameter count. If no public
-            // constructor exists or all constructors are parameterless then
-            // return null and the binder will instantiate via the default
-            // constructor.
-            IMethodSymbol? chosenCtor = null;
-            var publicConstructors = typeSymbol.InstanceConstructors.Where(c => c.DeclaredAccessibility == Accessibility.Public).ToList();
-            var paramCtors = publicConstructors.Where(c => c.Parameters.Length > 0).ToList();
-            if (paramCtors.Count > 0)
-            {
-                chosenCtor = paramCtors.OrderByDescending(c => c.Parameters.Length).First();
-            }
-            // Map constructor parameters to bound properties by name
-            var constructorMapping = new List<(IParameterSymbol parameter, BoundProperty property)>();
-            if (chosenCtor != null)
-            {
-                foreach (var param in chosenCtor.Parameters)
-                {
-                    var match = boundProperties.FirstOrDefault(p => string.Equals(p.Name, param.Name, StringComparison.OrdinalIgnoreCase));
-                    if (match != null)
-                    {
-                        constructorMapping.Add((param, match));
-                    }
-                }
-            }
-            return new BoundType(typeSymbol, boundProperties, chosenCtor, constructorMapping);
         }
 
-        /// <summary>
-        /// Builds a <see cref="BoundProperty"/> for the given property symbol.
-        /// This method examines custom attributes to determine the source and
-        /// key name, evaluates type characteristics such as primitives,
-        /// enumerations, GUIDs and collections, and recursively discovers
-        /// nested child properties for complex types.
-        /// </summary>
+        // -----------------------------------------------------------------
+        // Property collection helpers
+        // -----------------------------------------------------------------
+
+        private static IEnumerable<IPropertySymbol> GetAllInstanceProperties(INamedTypeSymbol type)
+        {
+            var map = new Dictionary<string, IPropertySymbol>(StringComparer.OrdinalIgnoreCase);
+
+            for (var current = type;
+                 current != null && current.SpecialType != SpecialType.System_Object;
+                 current = current.BaseType)
+            {
+                foreach (var p in current.GetMembers().OfType<IPropertySymbol>())
+                {
+                    if (p.IsStatic)
+                        continue;
+
+                    if (p.DeclaredAccessibility is not Accessibility.Public
+                        and not Accessibility.Protected
+                        and not Accessibility.ProtectedOrInternal)
+                        continue;
+
+                    if (!map.ContainsKey(p.Name))
+                        map[p.Name] = p;
+                }
+            }
+
+            return map.Values;
+        }
+
+        private static BoundType BuildModel(INamedTypeSymbol typeSymbol)
+        {
+            // Find the [HttpBinder] attribute on the type
+            var binderAttr = typeSymbol.GetAttributes()
+                .FirstOrDefault(a =>
+                    a.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                    == "global::HttpBinder.Generator.HttpBinderAttribute");
+
+            var classDefaultSource = SourceKind.Form;
+
+            if (binderAttr is not null)
+            {
+                foreach (var na in binderAttr.NamedArguments)
+                {
+                    if (na.Key == "HttpBinderType")
+                    {
+                        var tc = na.Value;
+
+                        if (tc.Value is int raw)
+                        {
+                            classDefaultSource = raw switch
+                            {
+                                1 => SourceKind.Query,
+                                2 => SourceKind.Route,
+                                _ => SourceKind.Form
+                            };
+                        }
+
+                        break;
+                    }
+                }
+            }
+
+            // Collect properties (including base classes)
+            var propertySymbols = GetAllInstanceProperties(typeSymbol);
+
+            // Build per-property models
+            var boundProperties = propertySymbols.Select(BuildBoundProperty).ToList();
+
+            // Apply default source if property has no override
+            foreach (var prop in boundProperties)
+            {
+                if (prop.Source == SourceKind.Form && classDefaultSource != SourceKind.Form)
+                {
+                    bool hasOverride = prop.Symbol.GetAttributes()
+                        .Any(a => a.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                                  is "global::HttpBinder.BindFromFormAttribute"
+                                  or "global::HttpBinder.BindFromQueryAttribute"
+                                  or "global::HttpBinder.BindFromRouteAttribute");
+
+                    if (!hasOverride)
+                        prop.Source = classDefaultSource;
+                }
+            }
+
+            // Pick the "largest" public constructor
+            var ctors = typeSymbol.InstanceConstructors
+                .Where(c => c.DeclaredAccessibility == Accessibility.Public)
+                .OrderByDescending(c => c.Parameters.Length)
+                .ToList();
+
+            var ctor = ctors.FirstOrDefault(c => c.Parameters.Length > 0);
+
+            var ctorMap = new List<(IParameterSymbol parameter, BoundProperty property)>();
+
+            if (ctor is not null)
+            {
+                foreach (var param in ctor.Parameters)
+                {
+                    var match = boundProperties.FirstOrDefault(p =>
+                        string.Equals(p.Name, param.Name, StringComparison.OrdinalIgnoreCase));
+
+                    if (match is not null)
+                        ctorMap.Add((param, match));
+                }
+            }
+
+            return new BoundType(typeSymbol, boundProperties, ctor, ctorMap);
+        }
+
         private static BoundProperty BuildBoundProperty(IPropertySymbol propSymbol)
         {
-            // Determine source kind via attributes
-            var source = SourceKind.Form; // default
-            var attrs = propSymbol.GetAttributes();
-            bool hasFromForm = false, hasFromQuery = false, hasFromRoute = false;
+            // Detect attribute overrides
+            var source = SourceKind.Form;
             string? customName = null;
-            foreach (var attr in attrs)
+
+            foreach (var attr in propSymbol.GetAttributes())
             {
-                var attrName = attr.AttributeClass?.ToDisplayString();
-                switch (attrName)
+                var name = attr.AttributeClass?.ToDisplayString();
+
+                switch (name)
                 {
                     case "HttpBinder.BindFromFormAttribute":
-                        hasFromForm = true;
+                        source = SourceKind.Form;
                         break;
+
                     case "HttpBinder.BindFromQueryAttribute":
-                        hasFromQuery = true;
+                        source = SourceKind.Query;
                         break;
+
                     case "HttpBinder.BindFromRouteAttribute":
-                        hasFromRoute = true;
+                        source = SourceKind.Route;
                         break;
+
                     case "HttpBinder.BindFormFieldAttribute":
-                        if (attr.ConstructorArguments.Length == 1 && attr.ConstructorArguments[0].Value is string s)
+                        if (attr.ConstructorArguments.Length == 1 &&
+                            attr.ConstructorArguments[0].Value is string s)
                         {
                             customName = s;
                         }
                         break;
                 }
             }
-            if (hasFromQuery) source = SourceKind.Query;
-            else if (hasFromRoute) source = SourceKind.Route;
-            else if (hasFromForm) source = SourceKind.Form;
-            var keyName = customName ?? propSymbol.Name;
-            // Determine type characteristics
-            var type = propSymbol.Type;
-            bool isNullable = propSymbol.NullableAnnotation == NullableAnnotation.Annotated;
-            // Nullable<T> struct is considered nullable even if NullableAnnotation.None
-            if (type is INamedTypeSymbol namedType && namedType.IsGenericType && namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
-            {
-                isNullable = true;
-                type = namedType.TypeArguments[0];
-            }
-            bool isString = type.SpecialType == SpecialType.System_String;
-            var fullName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            bool isGuid = fullName == "global::System.Guid";
-            bool isEnum = type.TypeKind == TypeKind.Enum;
 
-            bool isPrimitive = false;
-            switch (type.SpecialType)
+            var keyName = customName ?? propSymbol.Name;
+
+            // Determine core type info
+            var type = propSymbol.Type;
+            var isNullable = propSymbol.NullableAnnotation == NullableAnnotation.Annotated;
+
+            if (type is INamedTypeSymbol nt &&
+                nt.IsGenericType &&
+                nt.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
             {
-                case SpecialType.System_Boolean:
-                case SpecialType.System_Byte:
-                case SpecialType.System_SByte:
-                case SpecialType.System_Int16:
-                case SpecialType.System_UInt16:
-                case SpecialType.System_Int32:
-                case SpecialType.System_UInt32:
-                case SpecialType.System_Int64:
-                case SpecialType.System_UInt64:
-                case SpecialType.System_Single:
-                case SpecialType.System_Double:
-                case SpecialType.System_Decimal:
-                    isPrimitive = true;
-                    break;
-                default:
-                    break;
+                type = nt.TypeArguments[0];
+                isNullable = true;
             }
-            // Determine collection and element type
-            bool isCollection = false;
+
+            var isString = type.SpecialType == SpecialType.System_String;
+            var isEnum = type.TypeKind == TypeKind.Enum;
+            var isGuid = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Guid";
+
+            var isPrimitive = type.SpecialType is
+                SpecialType.System_Boolean or SpecialType.System_Byte or SpecialType.System_SByte
+                or SpecialType.System_Int16 or SpecialType.System_UInt16
+                or SpecialType.System_Int32 or SpecialType.System_UInt32
+                or SpecialType.System_Int64 or SpecialType.System_UInt64
+                or SpecialType.System_Single or SpecialType.System_Double
+                or SpecialType.System_Decimal;
+
+            // Detect collections
+            var isCollection = false;
             ITypeSymbol? elementType = null;
-            if (propSymbol.Type is IArrayTypeSymbol arrayType)
+
+            if (propSymbol.Type is IArrayTypeSymbol arr)
             {
                 isCollection = true;
-                elementType = arrayType.ElementType;
+                elementType = arr.ElementType;
             }
-            else if (propSymbol.Type is INamedTypeSymbol named && named.IsGenericType && named.TypeArguments.Length == 1)
+            else if (propSymbol.Type is INamedTypeSymbol named &&
+                     named.IsGenericType &&
+                     named.TypeArguments.Length == 1)
             {
-                var typeName = named.ConstructedFrom.ToDisplayString();
-                // Accept List<T>, IList<T>, ICollection<T>, IEnumerable<T>, IReadOnlyList<T>, IReadOnlyCollection<T>
-                if (typeName.StartsWith("System.Collections.Generic.IEnumerable") || typeName.StartsWith("System.Collections.Generic.IList") || typeName.StartsWith("System.Collections.Generic.List") || typeName.StartsWith("System.Collections.Generic.ICollection") || typeName.StartsWith("System.Collections.Generic.IReadOnlyCollection") || typeName.StartsWith("System.Collections.Generic.IReadOnlyList"))
+                var baseName = named.ConstructedFrom.ToDisplayString();
+
+                if (baseName.StartsWith("System.Collections.Generic.IEnumerable", StringComparison.Ordinal) ||
+                    baseName.StartsWith("System.Collections.Generic.IList", StringComparison.Ordinal) ||
+                    baseName.StartsWith("System.Collections.Generic.List", StringComparison.Ordinal) ||
+                    baseName.StartsWith("System.Collections.Generic.ICollection", StringComparison.Ordinal) ||
+                    baseName.StartsWith("System.Collections.Generic.IReadOnlyCollection", StringComparison.Ordinal) ||
+                    baseName.StartsWith("System.Collections.Generic.IReadOnlyList", StringComparison.Ordinal))
                 {
                     isCollection = true;
                     elementType = named.TypeArguments[0];
                 }
             }
 
-            bool elementIsComplex = false;
-            List<BoundProperty>? children = null;
-            if (isCollection && elementType != null)
-            {
-                // Determine element characteristics
-                var elemFullName = elementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                bool elementIsString = elementType.SpecialType == SpecialType.System_String;
-                bool elementIsGuid = elemFullName == "global::System.Guid";
-                bool elementIsEnum = elementType.TypeKind == TypeKind.Enum;
-                if (elementType is INamedTypeSymbol ntElem && ntElem.IsGenericType && ntElem.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
-                {
-                    var underlying = ntElem.TypeArguments[0];
-                    elementType = underlying;
-                    elementIsString = underlying.SpecialType == SpecialType.System_String;
-                    elementIsGuid = underlying.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Guid";
-                    elementIsEnum = underlying.TypeKind == TypeKind.Enum;
-                }
-                bool elementIsPrimitive = false;
-                switch (elementType.SpecialType)
-                {
-                    case SpecialType.System_Boolean:
-                    case SpecialType.System_Byte:
-                    case SpecialType.System_SByte:
-                    case SpecialType.System_Int16:
-                    case SpecialType.System_UInt16:
-                    case SpecialType.System_Int32:
-                    case SpecialType.System_UInt32:
-                    case SpecialType.System_Int64:
-                    case SpecialType.System_UInt64:
-                    case SpecialType.System_Single:
-                    case SpecialType.System_Double:
-                    case SpecialType.System_Decimal:
-                        elementIsPrimitive = true;
-                        break;
-                    default:
-                        break;
-                }
-                elementIsComplex = !elementIsPrimitive && !elementIsString && !elementIsGuid && !elementIsEnum;
-            }
             bool isComplex;
+            List<BoundProperty>? children = null;
+
             if (!isCollection)
             {
-                // Determine if type is complex (not primitive/string/guid/enum)
-                isComplex = !isPrimitive && !isString && !isGuid && !isEnum;
+                isComplex = !(isPrimitive || isString || isGuid || isEnum);
+
+                if (isComplex && type is INamedTypeSymbol typeNamed)
+                {
+                    children = GetAllInstanceProperties(typeNamed)
+                        .Select(BuildBoundProperty)
+                        .ToList();
+                }
             }
             else
             {
-                // For collection properties we use elementIsComplex to indicate complexity
-                isComplex = elementIsComplex;
-            }
-            // Recursively build child properties for complex types
-            if (isComplex && !isCollection)
-            {
-                // Build children for complex non-collection types
-                var complexType = propSymbol.Type;
-                // If nullable<T> we should use underlying type
-                if (propSymbol.Type is INamedTypeSymbol nt && nt.IsGenericType && nt.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
+                bool elementIsPrimitive = false;
+                bool elementIsString = false;
+                bool elementIsGuid = false;
+                bool elementIsEnum = false;
+
+                if (elementType is not null)
                 {
-                    complexType = nt.TypeArguments[0];
-                }
-                var complexTypeSymbol = (INamedTypeSymbol)complexType;
-                children = new List<BoundProperty>();
-                // iterate properties of complex type
-                var complexPropertyMap = new Dictionary<string, IPropertySymbol>(StringComparer.OrdinalIgnoreCase);
-                for (var current = complexTypeSymbol; current != null && current.SpecialType != SpecialType.System_Object; current = current.BaseType)
-                {
-                    foreach (var member in current.GetMembers().OfType<IPropertySymbol>())
+                    if (elementType is INamedTypeSymbol nte &&
+                        nte.IsGenericType &&
+                        nte.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
                     {
-                        if (member.IsStatic) continue;
-                        if (member.DeclaredAccessibility != Accessibility.Public && member.DeclaredAccessibility != Accessibility.Protected && member.DeclaredAccessibility != Accessibility.ProtectedOrInternal)
-                            continue;
-                        if (!complexPropertyMap.ContainsKey(member.Name))
-                        {
-                            complexPropertyMap[member.Name] = member;
-                        }
+                        elementType = nte.TypeArguments[0];
+                    }
+
+                    elementIsString = elementType.SpecialType == SpecialType.System_String;
+                    elementIsEnum = elementType.TypeKind == TypeKind.Enum;
+                    elementIsGuid = elementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.Guid";
+                    elementIsPrimitive = elementType.SpecialType is
+                        SpecialType.System_Boolean or SpecialType.System_Byte or SpecialType.System_SByte
+                        or SpecialType.System_Int16 or SpecialType.System_UInt16
+                        or SpecialType.System_Int32 or SpecialType.System_UInt32
+                        or SpecialType.System_Int64 or SpecialType.System_UInt64
+                        or SpecialType.System_Single or SpecialType.System_Double
+                        or SpecialType.System_Decimal;
+
+                    isComplex = !(elementIsPrimitive || elementIsString || elementIsGuid || elementIsEnum);
+
+                    if (isComplex && elementType is INamedTypeSymbol elementNamed)
+                    {
+                        children = GetAllInstanceProperties(elementNamed)
+                            .Select(BuildBoundProperty)
+                            .ToList();
                     }
                 }
-                foreach (var p in complexPropertyMap.Values)
+                else
                 {
-                    children.Add(BuildBoundProperty(p));
+                    isComplex = false;
                 }
             }
-            else if (isComplex && isCollection && elementType != null)
-            {
-                // Build children for complex element types inside collection
-                var elemNamed = (INamedTypeSymbol)elementType;
-                children = new List<BoundProperty>();
-                var complexPropertyMap = new Dictionary<string, IPropertySymbol>(StringComparer.OrdinalIgnoreCase);
-                for (var current = elemNamed; current != null && current.SpecialType != SpecialType.System_Object; current = current.BaseType)
-                {
-                    foreach (var member in current.GetMembers().OfType<IPropertySymbol>())
-                    {
-                        if (member.IsStatic) continue;
-                        if (member.DeclaredAccessibility != Accessibility.Public && member.DeclaredAccessibility != Accessibility.Protected && member.DeclaredAccessibility != Accessibility.ProtectedOrInternal)
-                            continue;
-                        if (!complexPropertyMap.ContainsKey(member.Name))
-                        {
-                            complexPropertyMap[member.Name] = member;
-                        }
-                    }
-                }
-                foreach (var p in complexPropertyMap.Values)
-                {
-                    children.Add(BuildBoundProperty(p));
-                }
-            }
-            return new BoundProperty(propSymbol, keyName, source, isNullable, isCollection, elementType, isEnum, isGuid, isPrimitive, isString, isComplex, children);
+
+            return new BoundProperty(
+                propSymbol,
+                keyName,
+                source,
+                isNullable,
+                isCollection,
+                elementType,
+                isEnum,
+                isGuid,
+                isPrimitive,
+                isString,
+                isComplex,
+                children
+            );
         }
     }
 }

@@ -47,7 +47,7 @@ namespace HttpBinder.Generator
         /// route). If none of the explicit attributes are applied the default
         /// source is form.
         /// </summary>
-        public SourceKind Source { get; } = source;
+        public SourceKind Source { get; set; } = source;
 
         /// <summary>
         /// Whether the property can accept a null value. Nullable reference
@@ -107,39 +107,32 @@ namespace HttpBinder.Generator
     /// constructor or a parameterless instance and the mapping of constructor
     /// parameters to properties.
     /// </summary>
-    internal sealed class BoundType
+    internal sealed class BoundType(INamedTypeSymbol typeSymbol, List<BoundProperty> properties,
+        IMethodSymbol? constructor, List<(IParameterSymbol parameter, BoundProperty property)> constructorMapping)
     {
-        public BoundType(INamedTypeSymbol typeSymbol, List<BoundProperty> properties,
-            IMethodSymbol? constructor, List<(IParameterSymbol parameter, BoundProperty property)> constructorMapping)
-        {
-            TypeSymbol = typeSymbol;
-            Properties = properties;
-            Constructor = constructor;
-            ConstructorMapping = constructorMapping;
-        }
 
         /// <summary>
         /// The target type symbol decorated with <c>GenerateHttpBinder</c>.
         /// </summary>
-        public INamedTypeSymbol TypeSymbol { get; }
+        public INamedTypeSymbol TypeSymbol { get; } = typeSymbol;
 
         /// <summary>
         /// The list of all bound properties including those inherited from base
         /// types. Derived type definitions override base definitions by name.
         /// </summary>
-        public List<BoundProperty> Properties { get; }
+        public List<BoundProperty> Properties { get; } = properties;
 
         /// <summary>
         /// If the type defines a meaningful public constructor with parameters
         /// then this will be set. Otherwise it will be null and the binder
         /// initialises via the default constructor.
         /// </summary>
-        public IMethodSymbol? Constructor { get; }
+        public IMethodSymbol? Constructor { get; } = constructor;
 
         /// <summary>
         /// For constructor initialisation, maps each constructor parameter to
         /// the corresponding bound property (matched by name, case insensitive).
         /// </summary>
-        public List<(IParameterSymbol parameter, BoundProperty property)> ConstructorMapping { get; }
+        public List<(IParameterSymbol parameter, BoundProperty property)> ConstructorMapping { get; } = constructorMapping;
     }
 }
