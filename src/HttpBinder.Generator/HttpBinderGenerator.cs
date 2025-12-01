@@ -190,7 +190,7 @@ namespace HttpBinder.Generator
             var keyName = customName ?? propSymbol.Name;
 
             var type = propSymbol.Type;
-            (bool isNullable, bool isEnum, bool isGuid, bool isPrimitive, bool isString, bool isComplex) = GetPropertyAttributes(type);
+            (bool isNullable, bool isGuid, bool isEnum, bool isPrimitive, bool isString, bool isComplex) = GetPropertyAttributes(type);
 
             // Detect collections
             var collectionType = FindCollectionType(type);
@@ -209,7 +209,7 @@ namespace HttpBinder.Generator
             {
                 if (collectionType is not null)
                 {
-                    (bool _, bool collectionTypeIsEnum, bool collectionTypeIsGuid, bool collectionTypeIsPrimitive, bool collectionTypeIsString, bool collectionTypeIsComplex) = GetPropertyAttributes(collectionType);
+                    (bool _, bool collectionTypeIsGuid, bool collectionTypeIsEnum, bool collectionTypeIsPrimitive, bool collectionTypeIsString, bool collectionTypeIsComplex) = GetPropertyAttributes(collectionType);
 
                     if (collectionTypeIsComplex && collectionType is INamedTypeSymbol elementNamed)
                     {

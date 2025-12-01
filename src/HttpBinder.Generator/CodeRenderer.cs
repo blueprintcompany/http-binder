@@ -1,12 +1,21 @@
 using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace HttpBinder.Generator
 {
+    /// <summary>
+    /// Emits the generated binder source for a DTO bound via BindAsync().
+    /// Code prioritizes human readability and correct binding semantics.
+    /// </summary>
     internal static class CodeRenderer
     {
+        // ==================================================================
+        //  Render Root
+        // ==================================================================
+
         public static string Render(BoundType model)
         {
             var sb = new StringBuilder();
@@ -15,19 +24,19 @@ namespace HttpBinder.Generator
             sb.AppendLine("#nullable enable");
             sb.AppendLine();
 
-            var typeSymbol = model.TypeSymbol;
-
-            sb.AppendLine($"namespace {typeSymbol.ContainingNamespace.ToDisplayString()}");
+            var ns = model.TypeSymbol.ContainingNamespace.ToDisplayString();
+            sb.AppendLine($"namespace {ns}");
             sb.AppendLine("{");
 
             var indent = new IndentedStringBuilder(sb, 1);
-            var typeKind = typeSymbol.IsRecord ? "record" : "class";
 
-            indent.AppendLine($"partial {typeKind} {typeSymbol.Name}");
+            string typeKind = model.TypeSymbol.IsRecord ? "record" : "class";
+            indent.AppendLine($"partial {typeKind} {model.TypeSymbol.Name}");
             indent.AppendLine("{");
             indent.Indent();
 
             RenderBindMethod(indent, model);
+            indent.AppendLine();
             RenderComplexHelpers(indent, model);
 
             indent.Unindent();
@@ -38,33 +47,42 @@ namespace HttpBinder.Generator
             return sb.ToString();
         }
 
+        // ==================================================================
+        //  BindAsync
+        // ==================================================================
+
         private static void RenderBindMethod(IndentedStringBuilder indent, BoundType model)
         {
-            var targetTypeName = Utilities.GetFullTypeName(model.TypeSymbol);
-
+            var typeName = Utilities.GetFullTypeName(model.TypeSymbol);
             var requiresForm = RequiresForm(model);
 
             indent.AppendLine(
-                $"public static async global::System.Threading.Tasks.ValueTask<{targetTypeName}> BindAsync(global::Microsoft.AspNetCore.Http.HttpContext ctx)");
+                $"public static async global::System.Threading.Tasks.ValueTask<{typeName}> BindAsync(");
+            indent.AppendLine("    global::Microsoft.AspNetCore.Http.HttpContext http)");
             indent.AppendLine("{");
             indent.Indent();
 
-            if (requiresForm)
-                indent.AppendLine("var form = await ctx.Request.ReadFormAsync().ConfigureAwait(false);");
+            indent.AppendLine("var request = http.Request;");
 
-            indent.AppendLine("var query = ctx.Request.Query;");
-            indent.AppendLine("var route = ctx.Request.RouteValues;");
+            if (requiresForm)
+                indent.AppendLine("var form = await request.ReadFormAsync().ConfigureAwait(false);");
+
+            indent.AppendLine("var query = request.Query;");
+            indent.AppendLine("var route = request.RouteValues;");
             indent.AppendLine();
 
             foreach (var prop in model.Properties)
+            {
                 GeneratePropertyBinding(indent, prop, requiresForm);
+                indent.AppendLine();
+            }
 
-            indent.AppendLine();
+            indent.AppendLine($"var instance = new {typeName}();");
 
-            indent.AppendLine($"var result = new {targetTypeName}();");
-            foreach (var p in model.Properties)
-                indent.AppendLine($"result.{p.Name} = {p.Name};");
-            indent.AppendLine("return result;");
+            foreach (var prop in model.Properties)
+                indent.AppendLine($"instance.{prop.Name} = {ToCamelCase(prop.Name)};");
+
+            indent.AppendLine("return instance;");
 
             indent.Unindent();
             indent.AppendLine("}");
@@ -73,57 +91,51 @@ namespace HttpBinder.Generator
         private static bool RequiresForm(BoundType model)
         {
             foreach (var p in model.Properties)
-            {
-                if (NeedsForm(p))
+                if (RequiresFormRecursive(p))
                     return true;
-            }
 
             return false;
 
-            static bool NeedsForm(BoundProperty p)
+            static bool RequiresFormRecursive(BoundProperty prop)
             {
-                if (p.HttpBinderType == HttpBinderType.Form)
+                if (prop.HttpBinderType == HttpBinderType.Form)
                     return true;
 
-                foreach (var c in p.Children)
-                {
-                    if (NeedsForm(c))
+                foreach (var c in prop.Children)
+                    if (RequiresFormRecursive(c))
                         return true;
-                }
 
                 return false;
             }
         }
+
+        // ==================================================================
+        //  Per-property Binding
+        // ==================================================================
 
         private static void GeneratePropertyBinding(
             IndentedStringBuilder indent,
             BoundProperty prop,
             bool requiresForm)
         {
-            var localName = prop.Name;
-            var typeName = Utilities.GetFullTypeName(prop.Symbol.Type);
+            string localName = ToCamelCase(prop.Name);
+            string typeName = Utilities.GetFullTypeName(prop.Symbol.Type);
 
             EmitLocalDeclaration(indent, prop, localName, typeName);
 
-            indent.AppendLine("{");
-            indent.Indent();
-
             if (prop.IsCollection)
             {
-                GenerateCollectionBinding(indent, prop, requiresForm);
-                CloseScope(indent);
+                GenerateCollectionBinding(indent, prop, localName, requiresForm);
                 return;
             }
 
             if (prop.IsComplex)
             {
                 EmitComplexCall(indent, prop, localName, requiresForm);
-                CloseScope(indent);
                 return;
             }
 
             EmitSimpleBinding(indent, prop, localName, requiresForm);
-            CloseScope(indent);
         }
 
         private static void EmitLocalDeclaration(
@@ -138,19 +150,15 @@ namespace HttpBinder.Generator
                 return;
             }
 
-            var init = (prop.IsNullable || prop.Symbol.Type.IsReferenceType)
-                ? "default!"
-                : "default";
+            // Use null-friendly initialization and let parsing fill it
+            if (prop.Symbol.Type.IsReferenceType)
+            {
+                indent.AppendLine($"{typeName}? {localName} = null;");
+                return;
+            }
 
-            indent.AppendLine($"{typeName} {localName} = {init};");
+            indent.AppendLine($"{typeName} {localName} = default;");
         }
-
-        private static void CloseScope(IndentedStringBuilder indent)
-        {
-            indent.Unindent();
-            indent.AppendLine("}");
-        }
-
 
         private static void EmitSimpleBinding(
             IndentedStringBuilder indent,
@@ -158,29 +166,36 @@ namespace HttpBinder.Generator
             string localName,
             bool requiresForm)
         {
-            var valueVar = $"value_{localName}";
-            EmitValueAccessor(indent, prop, valueVar, requiresForm);
-            EmitValueParser(indent, prop, localName, valueVar);
+            string rawVar = $"{localName}Raw";
+
+            EmitValueAccessor(indent, prop, localName, rawVar, requiresForm);
+            EmitValueParser(indent, prop, localName, rawVar);
         }
 
         private static void EmitValueAccessor(
             IndentedStringBuilder indent,
             BoundProperty prop,
-            string valueVar,
+            string baseName,
+            string rawVar,
             bool requiresForm)
         {
-            var key = prop.KeyName;
+            string key = prop.KeyName;
+            string camel = baseName; // already camel-cased
+            string formValueVar = $"{camel}FormValue";
+            string queryValueVar = $"{camel}QueryValue";
+            string routeValueVar = $"{camel}RouteValue";
 
             switch (prop.HttpBinderType)
             {
                 case HttpBinderType.Query:
                     indent.AppendLine(
-                        $"var {valueVar} = query.TryGetValue(\"{key}\", out var qv) && qv.Count > 0 ? qv.ToString() : null;");
+                        $"var {rawVar} = query.TryGetValue(\"{key}\", out var {queryValueVar}) && {queryValueVar}.Count > 0 ?");
+                    indent.AppendLine($"    {queryValueVar}.ToString() : null;");
                     break;
 
                 case HttpBinderType.Route:
                     indent.AppendLine(
-                        $"var {valueVar} = route.TryGetValue(\"{key}\", out var rv) ? rv?.ToString() : null;");
+                        $"var {rawVar} = route.TryGetValue(\"{key}\", out var {routeValueVar}) ? {routeValueVar}?.ToString() : null;");
                     break;
 
                 case HttpBinderType.Form:
@@ -188,12 +203,14 @@ namespace HttpBinder.Generator
                     if (requiresForm)
                     {
                         indent.AppendLine(
-                            $"var {valueVar} = form.TryGetValue(\"{key}\", out var fv) && fv.Count > 0 ? fv.ToString() : null;");
+                            $"var {rawVar} = form.TryGetValue(\"{key}\", out var {formValueVar}) && {formValueVar}.Count > 0 ?");
+                        indent.AppendLine($"    {formValueVar}.ToString() : null;");
                     }
                     else
                     {
                         indent.AppendLine(
-                            $"var {valueVar} = ctx.Request.Form.TryGetValue(\"{key}\", out var fv) && fv.Count > 0 ? fv.ToString() : null;");
+                            $"var {rawVar} = http.Request.Form.TryGetValue(\"{key}\", out var {formValueVar}) && {formValueVar}.Count > 0 ?");
+                        indent.AppendLine($"    {formValueVar}.ToString() : null;");
                     }
                     break;
             }
@@ -203,38 +220,44 @@ namespace HttpBinder.Generator
             IndentedStringBuilder indent,
             BoundProperty prop,
             string localName,
-            string valueVar)
+            string rawVar)
         {
             if (prop.IsString)
             {
-                indent.AppendLine($"{localName} = {valueVar};");
+                // Avoid nullable warning by guarding assignment
+                indent.AppendLine($"if ({rawVar} != null) {localName} = {rawVar};");
                 return;
             }
 
             if (prop.IsGuid)
             {
                 indent.AppendLine(
-                    $"if ({valueVar} != null && global::System.Guid.TryParse({valueVar}, out var g)) {localName} = g;");
+                    $"if ({rawVar} != null && global::System.Guid.TryParse({rawVar}, out var {localName}Parsed))");
+                indent.AppendLine($"    {localName} = {localName}Parsed;");
                 return;
             }
 
             if (prop.IsEnum)
             {
                 var enumName = Utilities.GetFullTypeName(prop.Symbol.Type);
+
                 indent.AppendLine(
-                    $"if ({valueVar} != null && global::System.Enum.TryParse<{enumName}>({valueVar}, true, out var e)) {localName} = e;");
+                    $"if ({rawVar} != null && global::System.Enum.TryParse<{enumName}>({rawVar}, true, out var {localName}Parsed))");
+                indent.AppendLine($"    {localName} = {localName}Parsed;");
                 return;
             }
 
             if (prop.IsPrimitive)
             {
-                var parse = GetTryParseMethod(prop.Symbol.Type);
+                string parse = GetTryParseMethod(prop.Symbol.Type);
+
                 indent.AppendLine(
-                    $"if ({valueVar} != null && {parse}({valueVar}, out var pv)) {localName} = pv;");
+                    $"if ({rawVar} != null && {parse}({rawVar}, out var {localName}Parsed))");
+                indent.AppendLine($"    {localName} = {localName}Parsed;");
                 return;
             }
 
-            indent.AppendLine($"// unsupported type: {Utilities.GetFullTypeName(prop.Symbol.Type)}");
+            indent.AppendLine($"// Unsupported type: {Utilities.GetFullTypeName(prop.Symbol.Type)}");
         }
 
         private static void EmitComplexCall(
@@ -243,59 +266,68 @@ namespace HttpBinder.Generator
             string localName,
             bool requiresForm)
         {
-            var helper = $"Bind_{GetSanitisedTypeName(prop.Symbol.Type)}";
-            var formArg = requiresForm ? "form" : "null";
-            var prefix = prop.KeyName + ".";
+            string helperName = $"Bind_{GetSanitizedTypeName(prop.Symbol.Type)}";
+            string formArg = requiresForm ? "form" : "null";
+            string prefix = prop.KeyName + ".";
 
             indent.AppendLine(
-                $"{localName} = {helper}(ctx, \"{prefix}\", {formArg}, query, route);");
+                $"{localName} = {helperName}(http, \"{prefix}\", {formArg}, query, route);");
         }
 
-        // ---------------------------------------------------------------------
-        //  Collection binding
-        // ---------------------------------------------------------------------
+        // ==================================================================
+        //  Collection Binding
+        // ==================================================================
 
         private static void GenerateCollectionBinding(
             IndentedStringBuilder indent,
             BoundProperty prop,
+            string localName,
             bool requiresForm)
         {
-            var listName = prop.Name;
-            var elemType = prop.CollectionType!;
-            var key = prop.KeyName;
+            string listName = localName;
+            var elementType = prop.CollectionType!;
+            string keyBase = prop.KeyName;
 
             string keysExpr =
                 prop.HttpBinderType == HttpBinderType.Query ? "query.Keys" :
                 prop.HttpBinderType == HttpBinderType.Route ? "route.Keys" :
                 requiresForm ? "form.Keys" :
-                "ctx.Request.Form.Keys";
+                "http.Request.Form.Keys";
 
-            indent.AppendLine($"var collectionPrefix = \"{key}[\";");
+            indent.AppendLine($"var {listName}Prefix = \"{keyBase}[\";");
 
-            indent.AppendLine($"foreach (var k in {keysExpr})");
+            indent.AppendLine();
+            indent.AppendLine($"foreach (var key in {keysExpr})");
             indent.AppendLine("{");
             indent.Indent();
 
-            indent.AppendLine("if (!k.StartsWith(collectionPrefix, global::System.StringComparison.OrdinalIgnoreCase)) continue;");
-            indent.AppendLine("var start = collectionPrefix.Length;");
-            indent.AppendLine("var end = k.IndexOf(']', start);");
-            indent.AppendLine("if (end < 0) continue;");
-            indent.AppendLine("var idxStr = k.Substring(start, end - start);");
-            indent.AppendLine("if (!int.TryParse(idxStr, out var index)) continue;");
+            indent.AppendLine(
+                $"if (!key.StartsWith({listName}Prefix, global::System.StringComparison.OrdinalIgnoreCase)) continue;");
 
-            indent.AppendLine($"while ({listName}.Count <= index) {{ {listName}.Add(default!); }}");
-            indent.AppendLine("var elementPrefix = collectionPrefix + index + \"].\";");
+            indent.AppendLine($"var {listName}IndexStart = {listName}Prefix.Length;");
+            indent.AppendLine($"var {listName}IndexEnd = key.IndexOf(']', {listName}IndexStart);");
+            indent.AppendLine($"if ({listName}IndexEnd < 0) continue;");
 
-            if (prop.IsComplex)
+            indent.AppendLine($"var {listName}IndexString = key.Substring({listName}IndexStart, {listName}IndexEnd - {listName}IndexStart);");
+            indent.AppendLine($"if (!int.TryParse({listName}IndexString, out var {listName}Index)) continue;");
+
+            indent.AppendLine($"while ({listName}.Count <= {listName}Index) {listName}.Add(default!);");
+
+            indent.AppendLine("var elementKey = key;");
+
+            bool elementIsSimple = IsSimpleElementType(elementType);
+
+            if (!elementIsSimple)
             {
-                var helper = $"Bind_{GetSanitisedTypeName(elemType)}";
-                var formArg = requiresForm ? "form" : "null";
+                string helperName = $"Bind_{GetSanitizedTypeName(elementType)}";
+                string formArg = requiresForm ? "form" : "null";
+
                 indent.AppendLine(
-                    $"{listName}[index] = {helper}(ctx, elementPrefix, {formArg}, query, route);");
+                    $"{listName}[{listName}Index] = {helperName}(http, elementKey + \".\", {formArg}, query, route);");
             }
             else
             {
-                EmitCollectionElementBinding(indent, listName, elemType, prop.HttpBinderType, requiresForm);
+                EmitCollectionElementBinding(indent, listName, ToCamelCase(listName), elementType, prop.HttpBinderType);
             }
 
             indent.Unindent();
@@ -305,66 +337,78 @@ namespace HttpBinder.Generator
         private static void EmitCollectionElementBinding(
             IndentedStringBuilder indent,
             string listName,
-            ITypeSymbol elemType,
-            HttpBinderType httpBinderType,
-            bool requiresForm)
+            string baseName,
+            ITypeSymbol elementType,
+            HttpBinderType binderType)
         {
-            var valueVar = $"v_{listName}";
+            string rawVar = $"{baseName}ElementRaw";
+            string formValueVar = $"{baseName}ElementFormValue";
+            string queryValueVar = $"{baseName}ElementQueryValue";
+            string routeValueVar = $"{baseName}ElementRouteValue";
 
-            switch (httpBinderType)
+            indent.AppendLine();
+            indent.AppendLine($"string? {rawVar} = null;");
+
+            switch (binderType)
             {
                 case HttpBinderType.Query:
                     indent.AppendLine(
-                        $"var {valueVar} = query.TryGetValue(elementPrefix.TrimEnd('.'), out var qv) && qv.Count > 0 ? qv.ToString() : null;");
+                        $"if (query.TryGetValue(elementKey, out var {queryValueVar}) && {queryValueVar}.Count > 0)");
+                    indent.AppendLine($"    {rawVar} = {queryValueVar}.ToString();");
                     break;
 
                 case HttpBinderType.Route:
                     indent.AppendLine(
-                        $"var {valueVar} = route.TryGetValue(elementPrefix.TrimEnd('.'), out var rv) ? rv?.ToString() : null;");
+                        $"if (route.TryGetValue(elementKey, out var {routeValueVar}))");
+                    indent.AppendLine($"    {rawVar} = {routeValueVar}?.ToString();");
                     break;
 
                 case HttpBinderType.Form:
                 default:
-                    if (requiresForm)
-                    {
-                        indent.AppendLine(
-                            $"var {valueVar} = form.TryGetValue(elementPrefix.TrimEnd('.'), out var fv) && fv.Count > 0 ? fv.ToString() : null;");
-                    }
-                    else
-                    {
-                        indent.AppendLine(
-                            $"var {valueVar} = ctx.Request.Form.TryGetValue(elementPrefix.TrimEnd('.'), out var fv) && fv.Count > 0 ? fv.ToString() : null;");
-                    }
+                    indent.AppendLine(
+                        $"if (form!.TryGetValue(elementKey, out var {formValueVar}) && {formValueVar}.Count > 0)");
+                    indent.AppendLine($"    {rawVar} = {formValueVar}.ToString();");
                     break;
             }
 
-            var full = elemType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            indent.AppendLine();
+
+            string full = elementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
             if (full == "global::System.String")
             {
-                indent.AppendLine($"{listName}[index] = {valueVar};");
+                indent.AppendLine($"if ({rawVar} != null) {listName}[{listName}Index] = {rawVar};");
                 return;
             }
 
             if (full == "global::System.Guid")
             {
                 indent.AppendLine(
-                    $"if ({valueVar} != null && global::System.Guid.TryParse({valueVar}, out var g)) {listName}[index] = g;");
+                    $"if ({rawVar} != null && global::System.Guid.TryParse({rawVar}, out var elementParsed))");
+                indent.AppendLine($"    {listName}[{listName}Index] = elementParsed;");
                 return;
             }
 
-            if (elemType is INamedTypeSymbol en && en.TypeKind == TypeKind.Enum)
+            if (elementType is INamedTypeSymbol enumType && enumType.TypeKind == TypeKind.Enum)
             {
-                var enName = Utilities.GetFullTypeName(elemType);
+                string enumName = Utilities.GetFullTypeName(elementType);
+
                 indent.AppendLine(
-                    $"if ({valueVar} != null && global::System.Enum.TryParse<{enName}>({valueVar}, true, out var e)) {listName}[index] = e;");
+                    $"if ({rawVar} != null && global::System.Enum.TryParse<{enumName}>({rawVar}, true, out var elementParsed))");
+                indent.AppendLine($"    {listName}[{listName}Index] = elementParsed;");
                 return;
             }
 
-            var parse = GetTryParseMethod(elemType);
+            string parse = GetTryParseMethod(elementType);
+
             indent.AppendLine(
-                $"if ({valueVar} != null && {parse}({valueVar}, out var pv)) {listName}[index] = pv;");
+                $"if ({rawVar} != null && {parse}({rawVar}, out var elementParsed))");
+            indent.AppendLine($"    {listName}[{listName}Index] = elementParsed;");
         }
+
+        // ==================================================================
+        //  Complex-Type Helpers
+        // ==================================================================
 
         private static void RenderComplexHelpers(IndentedStringBuilder indent, BoundType model)
         {
@@ -374,19 +418,17 @@ namespace HttpBinder.Generator
             {
                 if (prop.IsComplex && !prop.IsCollection)
                 {
-                    var key = GetSanitisedTypeName(prop.Symbol.Type);
+                    string key = GetSanitizedTypeName(prop.Symbol.Type);
                     if (emitted.Add(key))
                         RenderComplexHelper(indent, prop.Symbol.Type, prop.Children);
                 }
 
-                if (prop.IsCollection && prop.IsComplex && prop.CollectionType is ITypeSymbol elem)
+                if (prop.CollectionType is ITypeSymbol element &&
+                    NeedsComplexHelper(element))
                 {
-                    if (NeedsComplexHelper(elem))
-                    {
-                        var key = GetSanitisedTypeName(elem);
-                        if (emitted.Add(key))
-                            RenderComplexHelper(indent, elem, prop.Children);
-                    }
+                    string key = GetSanitizedTypeName(element);
+                    if (emitted.Add(key))
+                        RenderComplexHelper(indent, element, prop.Children);
                 }
 
                 foreach (var c in prop.Children)
@@ -399,20 +441,7 @@ namespace HttpBinder.Generator
 
         private static bool NeedsComplexHelper(ITypeSymbol type)
         {
-            if (type.SpecialType == SpecialType.System_String)
-                return false;
-
-            var full = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            if (full == "global::System.Guid")
-                return false;
-
-            if (type is INamedTypeSymbol n && n.TypeKind == TypeKind.Enum)
-                return false;
-
-            if (type is INamedTypeSymbol builtIn && builtIn.SpecialType != SpecialType.None)
-                return false;
-
-            return true;
+            return !IsSimpleElementType(type);
         }
 
         private static void RenderComplexHelper(
@@ -420,65 +449,79 @@ namespace HttpBinder.Generator
             ITypeSymbol type,
             List<BoundProperty> children)
         {
-            var typeName = Utilities.GetFullTypeName(type);
-            var helperName = $"Bind_{GetSanitisedTypeName(type)}";
+            string typeName = Utilities.GetFullTypeName(type);
+            string helperName = $"Bind_{GetSanitizedTypeName(type)}";
 
-            indent.AppendLine(
-                $"private static {typeName} {helperName}(global::Microsoft.AspNetCore.Http.HttpContext ctx, string prefix, global::Microsoft.AspNetCore.Http.IFormCollection? form, global::Microsoft.AspNetCore.Http.IQueryCollection query, global::Microsoft.AspNetCore.Routing.RouteValueDictionary route)");
+            indent.AppendLine($"private static {typeName} {helperName}(");
+            indent.AppendLine("    global::Microsoft.AspNetCore.Http.HttpContext http,");
+            indent.AppendLine("    string prefix,");
+            indent.AppendLine("    global::Microsoft.AspNetCore.Http.IFormCollection? form,");
+            indent.AppendLine("    global::Microsoft.AspNetCore.Http.IQueryCollection query,");
+            indent.AppendLine("    global::Microsoft.AspNetCore.Routing.RouteValueDictionary route)");
             indent.AppendLine("{");
             indent.Indent();
 
-            // locals
+            // Locals
             foreach (var c in children)
             {
-                var tn = Utilities.GetFullTypeName(c.Symbol.Type);
+                string localName = ToCamelCase(c.Name);
+                string childTypeName = Utilities.GetFullTypeName(c.Symbol.Type);
+
                 if (c.IsCollection)
                 {
-                    indent.AppendLine($"{tn} {c.Name} = new {tn}();");
+                    indent.AppendLine($"{childTypeName} {localName} = new {childTypeName}();");
                 }
                 else
                 {
-                    var init = (c.IsNullable || c.Symbol.Type.IsReferenceType)
+                    string initializer =
+                        (c.IsNullable || c.Symbol.Type.IsReferenceType)
                         ? "default!"
                         : "default";
-                    indent.AppendLine($"{tn} {c.Name} = {init};");
+
+                    indent.AppendLine($"{childTypeName} {localName} = {initializer};");
                 }
             }
 
             indent.AppendLine();
 
-            // binding logic
+            // Binding logic
             foreach (var c in children)
             {
-                indent.AppendLine("{");
-                indent.Indent();
+                var localName = ToCamelCase(c.Name);
+                var keyVar = $"{localName}Key";
 
-                var keyVar = $"key_{c.Name}";
+                indent.AppendLine($"// {c.Name}");
                 indent.AppendLine($"var {keyVar} = prefix + \"{c.KeyName}\";");
+                indent.AppendLine();
 
                 if (c.IsCollection)
                 {
-                    EmitComplexChildCollection(indent, c, keyVar);
+                    EmitComplexChildCollection(indent, c, localName, keyVar);
                 }
                 else if (c.IsComplex)
                 {
-                    var nestedHelper = $"Bind_{GetSanitisedTypeName(c.Symbol.Type)}";
+                    string nestedHelper = $"Bind_{GetSanitizedTypeName(c.Symbol.Type)}";
                     indent.AppendLine(
-                        $"{c.Name} = {nestedHelper}(ctx, {keyVar} + \".\", form, query, route);");
+                        $"{localName} = {nestedHelper}(http, {keyVar} + \".\", form, query, route);");
                 }
                 else
                 {
-                    EmitComplexChildSimple(indent, c, keyVar);
+                    EmitComplexChildSimple(indent, c, localName, keyVar);
                 }
 
-                indent.Unindent();
-                indent.AppendLine("}");
+                indent.AppendLine();
             }
 
-            indent.AppendLine($"var inst = new {typeName}();");
+            string instanceName = "instance";
+            indent.AppendLine($"var {instanceName} = new {typeName}();");
+
             foreach (var c in children)
-                indent.AppendLine($"inst.{c.Name} = {c.Name};");
-            indent.AppendLine("return inst;");
+            {
+                string localName = ToCamelCase(c.Name);
+                indent.AppendLine($"{instanceName}.{c.Name} = {localName};");
+            }
+
+            indent.AppendLine($"return {instanceName};");
 
             indent.Unindent();
             indent.AppendLine("}");
@@ -487,96 +530,112 @@ namespace HttpBinder.Generator
         private static void EmitComplexChildSimple(
             IndentedStringBuilder indent,
             BoundProperty child,
+            string localName,
             string keyVar)
         {
-            var valueVar = $"value_{child.Name}";
+            string rawVar = $"{localName}Raw";
+            string formValueVar = $"{localName}FormValue";
+            string queryValueVar = $"{localName}QueryValue";
+            string routeValueVar = $"{localName}RouteValue";
 
             switch (child.HttpBinderType)
             {
                 case HttpBinderType.Query:
                     indent.AppendLine(
-                        $"var {valueVar} = query.TryGetValue({keyVar}, out var qv) && qv.Count > 0 ? qv.ToString() : null;");
+                        $"var {rawVar} = query.TryGetValue({keyVar}, out var {queryValueVar}) && {queryValueVar}.Count > 0 ?");
+                    indent.AppendLine($"    {queryValueVar}.ToString() : null;");
                     break;
 
                 case HttpBinderType.Route:
                     indent.AppendLine(
-                        $"var {valueVar} = route.TryGetValue({keyVar}, out var rv) ? rv?.ToString() : null;");
+                        $"var {rawVar} = route.TryGetValue({keyVar}, out var {routeValueVar}) ? {routeValueVar}?.ToString() : null;");
                     break;
 
                 case HttpBinderType.Form:
                 default:
                     indent.AppendLine(
-                        $"var {valueVar} = form != null && form.TryGetValue({keyVar}, out var fv) && fv.Count > 0 ? fv.ToString() : null;");
+                        $"var {rawVar} = form != null && form.TryGetValue({keyVar}, out var {formValueVar}) && {formValueVar}.Count > 0 ?");
+                    indent.AppendLine($"    {formValueVar}.ToString() : null;");
                     break;
             }
 
-            EmitValueParser(indent, child, child.Name, valueVar);
+            EmitValueParser(indent, child, localName, rawVar);
         }
 
         private static void EmitComplexChildCollection(
             IndentedStringBuilder indent,
             BoundProperty child,
+            string localName,
             string keyVar)
         {
-            string keysExpr =
-                child.HttpBinderType == HttpBinderType.Query ? "query.Keys" :
-                child.HttpBinderType == HttpBinderType.Route ? "route.Keys" :
-                "form?.Keys ?? global::System.Array.Empty<string>()";
+            string prefixVar = $"{localName}Prefix";
 
-            indent.AppendLine($"var collectionPrefix = {keyVar} + \"[\";");
+            indent.AppendLine($"var {prefixVar} = {keyVar} + \"[\";");
 
-            indent.AppendLine($"foreach (var k in {keysExpr})");
+            indent.AppendLine();
+            indent.AppendLine("foreach (var key in form?.Keys ?? global::System.Array.Empty<string>())");
             indent.AppendLine("{");
             indent.Indent();
 
-            indent.AppendLine("if (!k.StartsWith(collectionPrefix, global::System.StringComparison.OrdinalIgnoreCase)) continue;");
-            indent.AppendLine("var start = collectionPrefix.Length;");
-            indent.AppendLine("var end = k.IndexOf(']', start);");
-            indent.AppendLine("if (end < 0) continue;");
-            indent.AppendLine("var idxStr = k.Substring(start, end - start);");
-            indent.AppendLine("if (!int.TryParse(idxStr, out var index)) continue;");
+            indent.AppendLine(
+                $"if (!key.StartsWith({prefixVar}, global::System.StringComparison.OrdinalIgnoreCase)) continue;");
 
-            indent.AppendLine($"while ({child.Name}.Count <= index) {{ {child.Name}.Add(default!); }}");
-            indent.AppendLine($"var elementPrefix = collectionPrefix + index + \"].\";");
+            indent.AppendLine($"var {localName}IndexStart = {prefixVar}.Length;");
+            indent.AppendLine($"var {localName}IndexEnd = key.IndexOf(']', {localName}IndexStart);");
+            indent.AppendLine($"if ({localName}IndexEnd < 0) continue;");
 
-            if (child.IsComplex && child.CollectionType is ITypeSymbol elemType)
+            indent.AppendLine($"var {localName}IndexString = key.Substring({localName}IndexStart, {localName}IndexEnd - {localName}IndexStart);");
+            indent.AppendLine($"if (!int.TryParse({localName}IndexString, out var {localName}Index)) continue;");
+
+            indent.AppendLine($"while ({localName}.Count <= {localName}Index) {localName}.Add(default!);");
+
+            indent.AppendLine("var elementKey = key;");
+
+            if (child.CollectionType is ITypeSymbol elementType)
             {
-                var nestedFn = $"Bind_{GetSanitisedTypeName(elemType)}";
-                indent.AppendLine(
-                    $"{child.Name}[index] = {nestedFn}(ctx, elementPrefix, form, query, route);");
-            }
-            else if (child.CollectionType is ITypeSymbol simpleElem)
-            {
-                EmitCollectionElementBinding(
-                    indent,
-                    child.Name,
-                    simpleElem,
-                    child.HttpBinderType,
-                    child.HttpBinderType == HttpBinderType.Form);
+                bool elementIsSimple = IsSimpleElementType(elementType);
+
+                if (!elementIsSimple)
+                {
+                    string nestedHelper = $"Bind_{GetSanitizedTypeName(elementType)}";
+                    indent.AppendLine(
+                        $"{localName}[{localName}Index] = {nestedHelper}(http, elementKey + \".\", form, query, route);");
+                }
+                else
+                {
+                    EmitCollectionElementBinding(
+                        indent,
+                        localName,
+                        localName,
+                        elementType,
+                        child.HttpBinderType);
+                }
             }
 
             indent.Unindent();
             indent.AppendLine("}");
         }
 
+        // ==================================================================
+        //  Helpers
+        // ==================================================================
 
-
-        private static string GetSanitisedTypeName(ITypeSymbol type)
+        private static string GetSanitizedTypeName(ITypeSymbol type)
         {
-            var raw = Utilities.GetMinimalTypeName(type);
+            string raw = Utilities.GetMinimalTypeName(type);
             var sb = new StringBuilder(raw.Length);
 
-            foreach (var ch in raw)
-                sb.Append(char.IsLetterOrDigit(ch) ? ch : '_');
+            foreach (char c in raw)
+                sb.Append(char.IsLetterOrDigit(c) ? c : '_');
 
             return sb.ToString();
         }
 
         private static string GetTryParseMethod(ITypeSymbol type)
         {
-            var full = Utilities.GetFullTypeName(type);
+            string t = Utilities.GetFullTypeName(type);
 
-            return full switch
+            return t switch
             {
                 "global::System.Boolean" => "bool.TryParse",
                 "global::System.Byte" => "byte.TryParse",
@@ -592,6 +651,56 @@ namespace HttpBinder.Generator
                 "global::System.Decimal" => "decimal.TryParse",
                 _ => "int.TryParse"
             };
+        }
+
+        private static bool IsSimpleElementType(ITypeSymbol type)
+        {
+            // unwrap Nullable<T>
+            if (type is INamedTypeSymbol named &&
+                named.IsGenericType &&
+                named.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
+            {
+                type = named.TypeArguments[0];
+            }
+
+            if (type.SpecialType == SpecialType.System_String)
+                return true;
+
+            if (type is INamedTypeSymbol n && n.TypeKind == TypeKind.Enum)
+                return true;
+
+            var full = Utilities.GetFullTypeName(type);
+            if (full == "global::System.Guid")
+                return true;
+
+            if (type.SpecialType is
+                SpecialType.System_Boolean or
+                SpecialType.System_Byte or
+                SpecialType.System_SByte or
+                SpecialType.System_Int16 or
+                SpecialType.System_UInt16 or
+                SpecialType.System_Int32 or
+                SpecialType.System_UInt32 or
+                SpecialType.System_Int64 or
+                SpecialType.System_UInt64 or
+                SpecialType.System_Single or
+                SpecialType.System_Double or
+                SpecialType.System_Decimal or
+                SpecialType.System_Char)
+                return true;
+
+            return false;
+        }
+
+        private static string ToCamelCase(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+                return name;
+
+            if (char.IsLower(name[0]))
+                return name;
+
+            return char.ToLowerInvariant(name[0]) + name.Substring(1);
         }
     }
 }
