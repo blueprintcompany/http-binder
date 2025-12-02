@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Testing;
 
 namespace Generator.Tests.Generator.Analyzers;
 
-internal class ComplexTypeDetectedOnRouteOrQueryBinderTests : CSharpSourceGeneratorTest<HttpBinderGenerator, DefaultVerifier>
+internal class ComplexTypeDetectedOnRouteOrQueryBinderAnalyzerTests : CSharpSourceGeneratorTest<HttpBinderGenerator, DefaultVerifier>
 {
     [Test]
     public async Task GivenAQueryClass_WhenAComplexObjectIsPresent_ThenShowsDiagnostic()

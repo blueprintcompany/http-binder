@@ -45,7 +45,7 @@ internal static class CodeRenderer
     private static void RenderBindMethod(IndentedStringBuilder indent, BoundType model)
     {
         var typeName = model.TypeSymbol.GetFullTypeName();
-        var requiresForm = RequiresForm(model);
+        var usesForm = UsesForm(model);
         var usesQuery = UsesQueryAtRoot(model);
         var usesRoute = UsesRouteAtRoot(model);
 
@@ -57,7 +57,7 @@ internal static class CodeRenderer
 
         indent.AppendLine("var request = http.Request;");
 
-        if (requiresForm)
+        if (usesForm)
             indent.AppendLine("var form = await request.ReadFormAsync().ConfigureAwait(false);");
 
         if (usesQuery)
@@ -70,7 +70,9 @@ internal static class CodeRenderer
 
         foreach (var property in model.Properties)
         {
-            GeneratePropertyBinding(indent, property, requiresForm);
+            if (property.IsIgnored) continue;
+
+            GeneratePropertyBinding(indent, property, usesForm);
             indent.AppendLine();
         }
 
@@ -78,6 +80,8 @@ internal static class CodeRenderer
 
         foreach (var property in model.Properties)
         {
+            if (property.IsIgnored) continue;
+
             var localName = ToCamelCase(property.Name);
             indent.AppendLine($"instance.{property.Name} = {localName};");
         }
@@ -88,24 +92,24 @@ internal static class CodeRenderer
         indent.AppendLine("}");
     }
 
-    private static bool RequiresForm(BoundType model)
+    private static bool UsesForm(BoundType model)
     {
         foreach (var property in model.Properties)
         {
-            if (RequiresFormRecursive(property))
+            if (UsesFormRecursive(property))
                 return true;
         }
 
         return false;
 
-        static bool RequiresFormRecursive(BoundProperty property)
+        static bool UsesFormRecursive(BoundProperty property)
         {
             if (property.HttpBinderType == HttpBinderType.Form)
                 return true;
 
             foreach (var child in property.Children)
             {
-                if (RequiresFormRecursive(child))
+                if (UsesFormRecursive(child))
                     return true;
             }
 

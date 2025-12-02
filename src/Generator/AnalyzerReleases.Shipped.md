@@ -6,3 +6,4 @@ Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
 HB001 | HttpBinder | Warning | ComplexTypeDetectedOnRouteOrQueryBinder
 HB002 | HttpBinder | Warning | DictionaryTypeNotSupportedAnalyzer
+HB003 | HttpBinder | Warning | NestedCollectionsNotSupportedAnalyzer

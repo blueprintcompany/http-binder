@@ -4,24 +4,24 @@ using System.Linq;
 
 namespace Blueprint.HttpBinder.Analyzers;
 
-internal sealed class DictionaryTypeNotSupportedAnalyzer
+internal sealed class NestedCollectionsNotSupportedAnalyzer
 {
-    public const string Id = "HB002";
+    public const string Id = "HB003";
 
     private static readonly DiagnosticDescriptor _rule = new(
         Id,
-        "Dictionary types are not supported for HTTP binding",
-        "Property '{0}' is a dictionary type which cannot be bound from form, query, or route sources. This property will be ignored.",
+        "Nested collections are not supported for HTTP binding",
+        "Property '{0}' is a collection of collection type which cannot be bound from form, query, or route sources",
         "HttpBinder",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        "Dictionaries are ambiguous in HTTP binding and cannot be reliably parsed.");
+        "Nested collections are ambiguous in HTTP binding and cannot be reliably parsed.");
 
     internal static void ReportDiagnostics(SourceProductionContext context, BoundType boundType)
     {
         foreach (var property in boundType.Properties)
         {
-            if (!property.Symbol.Type.IsDictionary())
+            if (!property.Symbol.Type.IsNestedCollection())
                 continue;
 
             var location = property.Symbol.Locations.FirstOrDefault() ?? Location.None;

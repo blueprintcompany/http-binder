@@ -15,7 +15,6 @@ namespace Blueprint.HttpBinder
     // TODO:
     // - Support ignoring attribute
     // - Support IFormFile and IFormFileCollection (add analyzer too for not being valid unless form)
-    // - Analyzer for lists of lists.
     // - Fix complex object analyzer
     // - Dont generate dictionaries
     // - Caching - https://andrewlock.net/creating-a-source-generator-part-10-testing-your-incremental-generator-pipeline-outputs-are-cacheable/
@@ -47,6 +46,7 @@ namespace Blueprint.HttpBinder
             {
                 ComplexTypeDetectedOnRouteOrQueryBinderAnalyzer.ReportDiagnostics(sourceProductionContext, model);
                 DictionaryTypeNotSupportedAnalyzer.ReportDiagnostics(sourceProductionContext, model);
+                NestedCollectionsNotSupportedAnalyzer.ReportDiagnostics(sourceProductionContext, model);
 
                 var source = CodeRenderer.Render(model);
                 sourceProductionContext.AddSource($"{model.TypeSymbol.Name}.g.cs", source);
@@ -79,7 +79,6 @@ namespace Blueprint.HttpBinder
 
         private static BoundType BuildModel(INamedTypeSymbol typeSymbol, AttributeRegistry registry)
         {
-            // Find the [HttpBinder] attribute on the type
             var binderAttr = typeSymbol.GetAttributes().FirstOrDefault(a =>
                 SymbolEqualityComparer.Default.Equals(a.AttributeClass, registry.HttpBinderAttribute));
 
@@ -108,15 +107,12 @@ namespace Blueprint.HttpBinder
                 }
             }
 
-            // Collect properties (including base classes)
             var propertySymbols = GetAllInstanceProperties(typeSymbol);
 
-            // Build per-property models
             var boundProperties = propertySymbols
                 .Select(p => BuildBoundProperty(p, registry))
                 .ToList();
 
-            // Apply default source if property has no override
             foreach (var prop in boundProperties)
             {
                 if (prop.HttpBinderType == HttpBinderType.Form &&
@@ -192,33 +188,25 @@ namespace Blueprint.HttpBinder
 
             (bool isNullable, bool isGuid, bool isEnum, bool isPrimitive, bool isString, bool isComplex) = type.GetPropertyAttributes();
 
-            // Detect collections
             var collectionType = type.FindCollectionType();
             var isCollection = collectionType is not null;
 
             List<BoundProperty>? children = null;
 
-            if (!isCollection)
+            if (isCollection)
             {
-                if (isComplex && type is INamedTypeSymbol typeNamed)
+                (bool _, bool collectionTypeIsGuid, bool collectionTypeIsEnum, bool collectionTypeIsPrimitive, bool collectionTypeIsString, bool collectionTypeIsComplex) = collectionType!.GetPropertyAttributes();
+
+                if (collectionTypeIsComplex && collectionType is INamedTypeSymbol elementNamed)
                 {
-                    children = [.. GetAllInstanceProperties(typeNamed).Select(ps => BuildBoundProperty(ps, registry))];
+                    children = [.. GetAllInstanceProperties(elementNamed).Select(ps => BuildBoundProperty(ps, registry))];
                 }
             }
             else
             {
-                if (collectionType is not null)
+                if (isComplex && type is INamedTypeSymbol typeNamed)
                 {
-                    (bool _, bool collectionTypeIsGuid, bool collectionTypeIsEnum, bool collectionTypeIsPrimitive, bool collectionTypeIsString, bool collectionTypeIsComplex) = collectionType.GetPropertyAttributes();
-
-                    if (collectionTypeIsComplex && collectionType is INamedTypeSymbol elementNamed)
-                    {
-                        children = [.. GetAllInstanceProperties(elementNamed).Select(ps => BuildBoundProperty(ps, registry))];
-                    }
-                }
-                else
-                {
-                    isComplex = false;
+                    children = [.. GetAllInstanceProperties(typeNamed).Select(ps => BuildBoundProperty(ps, registry))];
                 }
             }
 
