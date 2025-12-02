@@ -17,6 +17,7 @@ namespace Blueprint.HttpBinder
     // - Support IFormFile and IFormFileCollection (add analyzer too for not being valid unless form)
     // - Analyzer for lists of lists.
     // - Fix complex object analyzer
+    // - Dont generate dictionaries
     // - Caching - https://andrewlock.net/creating-a-source-generator-part-10-testing-your-incremental-generator-pipeline-outputs-are-cacheable/
     [Generator]
     public sealed class HttpBinderGenerator : IIncrementalGenerator
@@ -158,8 +159,7 @@ namespace Blueprint.HttpBinder
         {
             var httpBinderType = HttpBinderType.Form;
 
-            var keyName = propertySymbol.Name;
-
+            var keyName = propertySymbol.Name
             var attributes = propertySymbol.GetAttributes();
             foreach (var attribute in attributes)
             {
@@ -184,10 +184,16 @@ namespace Blueprint.HttpBinder
             }
 
             var type = propertySymbol.Type;
-            (bool isNullable, bool isGuid, bool isEnum, bool isPrimitive, bool isString, bool isComplex) = GetPropertyAttributes(type);
+
+            if (type.IsDictionary() || type.IsNestedCollection())
+            {
+                return BoundProperty.Ignore(propertySymbol, httpBinderType);
+            }
+
+            (bool isNullable, bool isGuid, bool isEnum, bool isPrimitive, bool isString, bool isComplex) = type.GetPropertyAttributes();
 
             // Detect collections
-            var collectionType = FindCollectionType(type);
+            var collectionType = type.FindCollectionType();
             var isCollection = collectionType is not null;
 
             List<BoundProperty>? children = null;
@@ -203,7 +209,7 @@ namespace Blueprint.HttpBinder
             {
                 if (collectionType is not null)
                 {
-                    (bool _, bool collectionTypeIsGuid, bool collectionTypeIsEnum, bool collectionTypeIsPrimitive, bool collectionTypeIsString, bool collectionTypeIsComplex) = GetPropertyAttributes(collectionType);
+                    (bool _, bool collectionTypeIsGuid, bool collectionTypeIsEnum, bool collectionTypeIsPrimitive, bool collectionTypeIsString, bool collectionTypeIsComplex) = collectionType.GetPropertyAttributes();
 
                     if (collectionTypeIsComplex && collectionType is INamedTypeSymbol elementNamed)
                     {
@@ -228,70 +234,9 @@ namespace Blueprint.HttpBinder
                 isPrimitive,
                 isString,
                 isComplex,
+                false,
                 children
             );
-
-            static (bool isNullable, bool isGuid, bool isEnum, bool isPrimitive, bool isString, bool isComplex) GetPropertyAttributes(ITypeSymbol typeSymbol)
-            {
-                var isNullable = typeSymbol.NullableAnnotation == NullableAnnotation.Annotated;
-
-                if (typeSymbol is INamedTypeSymbol namedTypeSymbol &&
-                    namedTypeSymbol.IsGenericType &&
-                    namedTypeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
-                {
-                    typeSymbol = namedTypeSymbol.TypeArguments[0];
-                    isNullable = true;
-                }
-
-                var isString = typeSymbol.SpecialType == SpecialType.System_String;
-                var isEnum = typeSymbol.TypeKind == TypeKind.Enum;
-                var isGuid = Utilities.GetFullTypeName(typeSymbol) == "global::System.Guid";
-                var isPrimitive = typeSymbol.SpecialType is
-                    SpecialType.System_Boolean or
-                    SpecialType.System_Byte or
-                    SpecialType.System_SByte or
-                    SpecialType.System_Int16 or
-                    SpecialType.System_UInt16 or
-                    SpecialType.System_Int32 or
-                    SpecialType.System_UInt32 or
-                    SpecialType.System_Int64 or
-                    SpecialType.System_UInt64 or
-                    SpecialType.System_Single or
-                    SpecialType.System_Double or
-                    SpecialType.System_Decimal or
-                    SpecialType.System_Char or
-                    SpecialType.System_String;
-
-                var isComplex = !(isPrimitive || isString || isGuid || isEnum);
-
-                return (isNullable, isGuid, isEnum, isPrimitive, isString, isComplex);
-            }
-
-            static ITypeSymbol? FindCollectionType(ITypeSymbol type)
-            {
-                if (type is IArrayTypeSymbol arr)
-                {
-                    return arr.ElementType;
-                }
-                else if (type is INamedTypeSymbol named &&
-                         named.IsGenericType &&
-                         named.TypeArguments.Length == 1)
-                {
-                    var baseName = named.ConstructedFrom.ToDisplayString();
-
-                    if (baseName.StartsWith("System.Collections.Generic.IEnumerable", StringComparison.Ordinal) ||
-                        baseName.StartsWith("System.Collections.Generic.IList", StringComparison.Ordinal) ||
-                        baseName.StartsWith("System.Collections.Generic.List", StringComparison.Ordinal) ||
-                        baseName.StartsWith("System.Collections.Generic.ICollection", StringComparison.Ordinal) ||
-                        baseName.StartsWith("System.Collections.Generic.IReadOnlyCollection", StringComparison.Ordinal) ||
-                        baseName.StartsWith("System.Collections.Generic.IReadOnlyList", StringComparison.Ordinal))
-                    {
-                        return named.TypeArguments[0];
-                    }
-                }
-
-                return null;
-            }
         }
     }
 }

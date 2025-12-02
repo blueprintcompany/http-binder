@@ -44,7 +44,7 @@ internal static class CodeRenderer
 
     private static void RenderBindMethod(IndentedStringBuilder indent, BoundType model)
     {
-        var typeName = Utilities.GetFullTypeName(model.TypeSymbol);
+        var typeName = model.TypeSymbol.GetFullTypeName();
         var requiresForm = RequiresForm(model);
         var usesQuery = UsesQueryAtRoot(model);
         var usesRoute = UsesRouteAtRoot(model);
@@ -148,7 +148,7 @@ internal static class CodeRenderer
         bool requiresForm)
     {
         var localName = ToCamelCase(property.Name);
-        var typeName = Utilities.GetFullTypeName(property.Symbol.Type);
+        var typeName = property.Symbol.Type.GetFullTypeName();
 
         EmitLocalDeclaration(indent, property, localName, typeName);
 
@@ -272,7 +272,7 @@ internal static class CodeRenderer
 
         if (property.IsEnum)
         {
-            var enumName = Utilities.GetFullTypeName(property.Symbol.Type);
+            var enumName = property.Symbol.Type.GetFullTypeName();
 
             indent.AppendLine(
                 $"if ({rawVar} != null && global::System.Enum.TryParse<{enumName}>({rawVar}, true, out var {localName}Parsed))");
@@ -290,7 +290,7 @@ internal static class CodeRenderer
             return;
         }
 
-        indent.AppendLine($"// Unsupported type: {Utilities.GetFullTypeName(property.Symbol.Type)}");
+        indent.AppendLine($"// Unsupported type: {TypeSymbolExtensions.GetFullTypeName(property.Symbol.Type)}");
     }
 
     private static void EmitComplexCall(
@@ -439,7 +439,7 @@ internal static class CodeRenderer
         }
         else if (elementType is INamedTypeSymbol enumType && enumType.TypeKind == TypeKind.Enum)
         {
-            var enumName = Utilities.GetFullTypeName(elementType);
+            var enumName = elementType.GetFullTypeName();
 
             indent.AppendLine(
                 $"if ({rawVar} != null && global::System.Enum.TryParse<{enumName}>({rawVar}, true, out var elementParsed))");
@@ -496,7 +496,7 @@ internal static class CodeRenderer
         ITypeSymbol type,
         List<BoundProperty> children)
     {
-        var typeName = Utilities.GetFullTypeName(type);
+        var typeName = type.GetFullTypeName();
         var helperName = $"Bind_{GetSanitizedTypeName(type)}";
 
         indent.AppendLine($"private static {typeName} {helperName}(");
@@ -510,7 +510,7 @@ internal static class CodeRenderer
         foreach (var child in children)
         {
             var localName = ToCamelCase(child.Name);
-            var childType = Utilities.GetFullTypeName(child.Symbol.Type);
+            var childType = child.Symbol.Type.GetFullTypeName();
 
             if (child.IsCollection)
             {
@@ -650,7 +650,7 @@ internal static class CodeRenderer
 
     private static string GetSanitizedTypeName(ITypeSymbol type)
     {
-        var raw = Utilities.GetMinimalTypeName(type);
+        var raw = type.GetMinimalTypeName();
         var sb = new StringBuilder(raw.Length);
 
         foreach (var ch in raw)
@@ -661,7 +661,7 @@ internal static class CodeRenderer
 
     private static string GetTryParseMethod(ITypeSymbol type)
     {
-        var full = Utilities.GetFullTypeName(type);
+        var full = type.GetFullTypeName();
 
         return full switch
         {
@@ -696,7 +696,7 @@ internal static class CodeRenderer
         if (type is INamedTypeSymbol namedEnum && namedEnum.TypeKind == TypeKind.Enum)
             return true;
 
-        var full = Utilities.GetFullTypeName(type);
+        var full = type.GetFullTypeName();
         if (full == "global::System.Guid")
             return true;
 

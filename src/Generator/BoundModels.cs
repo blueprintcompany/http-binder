@@ -11,7 +11,7 @@ namespace Blueprint.HttpBinder;
 /// </summary>
 internal sealed class BoundProperty(IPropertySymbol symbol, string keyName, HttpBinderType httpBinderType, bool isNullable,
     bool isCollection, ITypeSymbol? collectionType, bool isEnum, bool isGuid, bool isPrimitive,
-    bool isString, bool isComplex, List<BoundProperty>? children)
+    bool isString, bool isComplex, bool isIgnored, List<BoundProperty>? children)
 {
 
     /// <summary>
@@ -80,12 +80,33 @@ internal sealed class BoundProperty(IPropertySymbol symbol, string keyName, Http
     /// </summary>
     public bool IsComplex { get; } = isComplex;
 
+    public bool IsIgnored { get; } = isIgnored;
+
     /// <summary>
     /// For complex and collection of complex properties, the list of child
     /// properties discovered on the element type. Empty for primitive or
     /// simple collection properties.
     /// </summary>
     public List<BoundProperty> Children { get; } = children ?? [];
+
+    public static BoundProperty Ignore(IPropertySymbol symbol, HttpBinderType httpBinderType)
+    {
+        return new BoundProperty(
+            symbol,
+            symbol.Name,
+            httpBinderType,
+            true,
+             false,
+            null,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            null
+        );
+    }
 }
 
 /// <summary>
