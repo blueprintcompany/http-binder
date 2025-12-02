@@ -159,7 +159,7 @@ namespace Blueprint.HttpBinder
         {
             var httpBinderType = HttpBinderType.Form;
 
-            var keyName = propertySymbol.Name
+            var keyName = propertySymbol.Name;
             var attributes = propertySymbol.GetAttributes();
             foreach (var attribute in attributes)
             {
@@ -177,7 +177,7 @@ namespace Blueprint.HttpBinder
 
                     foreach (var namedArgument in attribute.NamedArguments)
                     {
-                        if (namedArgument.Key == "Name" && namedArgument.Value.Value is string newName)
+                        if (namedArgument.Key == nameof(BindFromAttribute.Name) && namedArgument.Value.Value is string newName)
                             keyName = newName;
                     }
                 }
