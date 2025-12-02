@@ -24,18 +24,18 @@ You get predictable binding behavior without relying on conventions.
 
 ASP.NET Core automatically uses the generated binder:
 
-``csharp
+```csharp
 app.MapPost("/search", (SearchQuery query) =>
 {
     // query is fully populated by HttpBinder
 });
-``
+```
 
 The generator creates all binding logic during compilation.
 
 ## Example
 
-``csharp
+```csharp
 [HttpBinder(HttpBinderType.Query)]
 public partial class SearchQuery
 {
@@ -45,16 +45,16 @@ public partial class SearchQuery
     [BindFrom(HttpBinderType.Form, Name = "override_name")]
     public string? Extra { get; set; }
 }
-``
+```
 
 Endpoint:
 
-``csharp
+```csharp
 app.MapPost("/search", (SearchQuery query) =>
 {
     // HttpBinder handled everything
 });
-``
+```
 
 ## Attributes
 
@@ -62,28 +62,28 @@ app.MapPost("/search", (SearchQuery query) =>
 
 Marks a class as bindable and defines the default binding source:
 
-``csharp
+```csharp
 [HttpBinder(HttpBinderType.Form)]
 public partial class UploadRequest { }
-``
+```
 
 ### `[BindFrom]`
 
 Overrides how an individual property is bound:
 
-``csharp
+```csharp
 [BindFrom(HttpBinderType.Query, Name = "page")]
 public int PageNumber { get; set; }
-``
+```
 
 ### `[BindFromIgnore]`
 
 Excludes a property from binding:
 
-``csharp
+```csharp
 [BindFromIgnore]
 public string InternalOnly { get; set; }
-``
+```
 
 ## Supported types
 
@@ -137,11 +137,11 @@ The generated binders are typically faster than the default model binder for com
 
 Add the source generator to the project that defines your DTOs:
 
-``xml
+```xml
 <ItemGroup>
     <PackageReference Include="HttpBinder.Generator" Version="1.0.0" />
 </ItemGroup>
-``
+```
 
 No separate runtime package is needed.
 
