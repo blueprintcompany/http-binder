@@ -14,8 +14,6 @@ internal class ComplexTypeDetectedOnRouteOrQueryBinderTests : CSharpSourceGenera
         var code = @"
         using HttpBinder.Generator;
 
-        public enum HttpBinderType { Form, Query, Route }
-
         [HttpBinder(HttpBinderType = HttpBinderType.Route)]
         public partial class UserQueryRequest
         {
@@ -45,8 +43,6 @@ internal class ComplexTypeDetectedOnRouteOrQueryBinderTests : CSharpSourceGenera
         var code = @"
         using HttpBinder.Generator;
 
-        public enum HttpBinderType { Form, Query, Route }
-
         [HttpBinder(HttpBinderType = HttpBinderType.Form)]
         public partial class UserQueryRequest
         {
@@ -74,8 +70,6 @@ internal class ComplexTypeDetectedOnRouteOrQueryBinderTests : CSharpSourceGenera
     {
         var code = @"
         using HttpBinder.Generator;
-
-        public enum HttpBinderType { Form, Query, Route }
 
         [HttpBinder(HttpBinderType = HttpBinderType.Route)]
         public partial class UserQueryRequest
@@ -105,8 +99,6 @@ internal class ComplexTypeDetectedOnRouteOrQueryBinderTests : CSharpSourceGenera
     {
         var code = @"
         using HttpBinder.Generator;
-
-        public enum HttpBinderType { Form, Query, Route }
 
         [HttpBinder(HttpBinderType = HttpBinderType.Route)]
         public partial class UserQueryRequest

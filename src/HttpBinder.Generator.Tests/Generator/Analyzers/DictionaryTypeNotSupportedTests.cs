@@ -15,9 +15,7 @@ internal class DictionaryTypeNotSupportedAnalyzerTests : CSharpSourceGeneratorTe
             using HttpBinder.Generator;
             using System.Collections.Generic;
 
-            public enum HttpBinderType { Form, Query, Route }
-
-            [HttpBinder(HttpBinderType = HttpBinderType.Query)]
+            [HttpBinder]
             public partial class UserQueryRequest
             {
                 public Dictionary<string, string> Filters { get; set; } = new();
@@ -45,9 +43,7 @@ internal class DictionaryTypeNotSupportedAnalyzerTests : CSharpSourceGeneratorTe
         var code = @"
             using HttpBinder.Generator;
 
-            public enum HttpBinderType { Form, Query, Route }
-
-            [HttpBinder(HttpBinderType = HttpBinderType.Form)]
+            [HttpBinder]
             public partial class UserQueryRequest
             {
                 public string Name { get; set; } = """";

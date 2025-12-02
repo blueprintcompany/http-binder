@@ -14,7 +14,7 @@ internal static class TestBase
             [
                 MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(HttpContext).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(BindFromAttribute).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(BindFromAttribute).Assembly.Location)
             ],
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
         );
