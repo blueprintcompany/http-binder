@@ -14,9 +14,10 @@ namespace HttpBinder.Generator
 {
     // TODO:
     // - Support ignoring attribute
-    // - Support IFormFile and IFormFileCollection (add analyzer too)
-    // - Analyzer for dictionaries
+    // - Support IFormFile and IFormFileCollection (add analyzer too for not being valid unless form)
     // - Analyzer for lists of lists.
+    // - Fix complex object analyzer
+    // - Caching - https://andrewlock.net/creating-a-source-generator-part-10-testing-your-incremental-generator-pipeline-outputs-are-cacheable/
     [Generator]
     public sealed class HttpBinderGenerator : IIncrementalGenerator
     {
