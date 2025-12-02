@@ -12,18 +12,18 @@ internal class ComplexTypeDetectedOnRouteOrQueryBinderTests : CSharpSourceGenera
     public async Task GivenAQueryClass_WhenAComplexObjectIsPresent_ThenShowsDiagnostic()
     {
         var code = @"
-            using HttpBinder.Generator;
+        using HttpBinder.Generator;
 
-            public enum HttpBinderType { Form, Query, Route }
+        public enum HttpBinderType { Form, Query, Route }
 
-            [HttpBinder(HttpBinderType = HttpBinderType.Query)]
-            public partial class UserQueryRequest
-            {
-                public ComplexType ComplexType { get; set; } = new();
-            }
+        [HttpBinder(HttpBinderType = HttpBinderType.Route)]
+        public partial class UserQueryRequest
+        {
+            public ComplexType ComplexType { get; set; } = new();
+        }
 
-            public class ComplexType {}
-            ";
+        public class ComplexType {}
+        ";
 
         var compilation = TestBase.Create(code);
 
@@ -33,7 +33,7 @@ internal class ComplexTypeDetectedOnRouteOrQueryBinderTests : CSharpSourceGenera
 
         var result = driver.GetRunResult();
 
-        var diagnostic = result.Diagnostics.SingleOrDefault(d => d.Id == ComplexTypeDetectedOnRouteOrQueryBinder._id);
+        var diagnostic = result.Diagnostics.SingleOrDefault(d => d.Id == ComplexTypeDetectedOnRouteOrQueryBinderAnalyzer.Id);
 
         await Assert.That(diagnostic).IsNotNull();
         await Assert.That(diagnostic.Severity).IsEqualTo(DiagnosticSeverity.Warning);
@@ -64,7 +64,7 @@ internal class ComplexTypeDetectedOnRouteOrQueryBinderTests : CSharpSourceGenera
 
         var result = driver.GetRunResult();
 
-        var diagnostic = result.Diagnostics.SingleOrDefault(d => d.Id == ComplexTypeDetectedOnRouteOrQueryBinder._id);
+        var diagnostic = result.Diagnostics.SingleOrDefault(d => d.Id == ComplexTypeDetectedOnRouteOrQueryBinderAnalyzer.Id);
 
         await Assert.That(diagnostic).IsNull();
     }
@@ -94,14 +94,14 @@ internal class ComplexTypeDetectedOnRouteOrQueryBinderTests : CSharpSourceGenera
 
         var result = driver.GetRunResult();
 
-        var diagnostic = result.Diagnostics.SingleOrDefault(d => d.Id == ComplexTypeDetectedOnRouteOrQueryBinder._id);
+        var diagnostic = result.Diagnostics.SingleOrDefault(d => d.Id == ComplexTypeDetectedOnRouteOrQueryBinderAnalyzer.Id);
 
         await Assert.That(diagnostic).IsNotNull();
         await Assert.That(diagnostic.Severity).IsEqualTo(DiagnosticSeverity.Warning);
     }
 
     [Test]
-    public async Task GivenARouteClass_WhenComplexPropertyOverridesToForm_ThenDoesNotShowDiagnostic()
+    public async Task GivenARouteClass_WhenComplexPropertyOverridesWithBindFromForm_ThenDoesNotShowDiagnostic()
     {
         var code = @"
         using HttpBinder.Generator;
@@ -126,7 +126,7 @@ internal class ComplexTypeDetectedOnRouteOrQueryBinderTests : CSharpSourceGenera
 
         var result = driver.GetRunResult();
 
-        var diagnostic = result.Diagnostics.SingleOrDefault(d => d.Id == ComplexTypeDetectedOnRouteOrQueryBinder._id);
+        var diagnostic = result.Diagnostics.SingleOrDefault(d => d.Id == ComplexTypeDetectedOnRouteOrQueryBinderAnalyzer.Id);
 
         await Assert.That(diagnostic).IsNull();
     }

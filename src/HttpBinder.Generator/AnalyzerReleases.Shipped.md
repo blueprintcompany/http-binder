@@ -4,4 +4,5 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
-HB001 | HttpBinder | Warning | HttpBinderGenerator
+HB001 | HttpBinder | Warning | ComplexTypeDetectedOnRouteOrQueryBinder
+HB002 | HttpBinder | Warning | DictionaryTypeNotSupportedAnalyzer

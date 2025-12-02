@@ -43,7 +43,8 @@ namespace HttpBinder.Generator
             // Emit generated files + diagnostics
             context.RegisterSourceOutput(models, static (sourceProductionContext, model) =>
             {
-                ComplexTypeDetectedOnRouteOrQueryBinder.ReportDiagnostics(sourceProductionContext, model);
+                ComplexTypeDetectedOnRouteOrQueryBinderAnalyzer.ReportDiagnostics(sourceProductionContext, model);
+                DictionaryTypeNotSupportedAnalyzer.ReportDiagnostics(sourceProductionContext, model);
 
                 var source = CodeRenderer.Render(model);
                 sourceProductionContext.AddSource($"{model.TypeSymbol.Name}.g.cs", source);

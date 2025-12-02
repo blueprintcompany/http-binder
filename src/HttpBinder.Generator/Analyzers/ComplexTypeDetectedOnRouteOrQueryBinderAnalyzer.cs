@@ -5,17 +5,17 @@ using System.Linq;
 
 namespace HttpBinder.Generator.Analyzers;
 
-internal class ComplexTypeDetectedOnRouteOrQueryBinder
+internal class ComplexTypeDetectedOnRouteOrQueryBinderAnalyzer
 {
-    internal const string _id = "HB001";
+    public const string Id = "HB001";
 
-    private static readonly DiagnosticDescriptor _analyzer = new(
-            id: _id,
-            title: "Complex types cannot be bound from query or route",
-            messageFormat: "Property '{0}' on type '{1}' is a complex type and cannot be bound from {2}. Use [HttpBinder(HttpBinderType = HttpBinderType.Form]) on the class or [BindFrom(HttpBinderType.Form)] on the property instead.",
-            category: "HttpBinder",
-            defaultSeverity: DiagnosticSeverity.Warning,
-            isEnabledByDefault: true);
+    private static readonly DiagnosticDescriptor _rule = new(
+            Id,
+            "Complex types cannot be bound from query or route",
+            "Property '{0}' on type '{1}' is a complex type and cannot be bound from {2}. Use [HttpBinder(HttpBinderType = HttpBinderType.Form]) on the class or [BindFrom(HttpBinderType.Form)] on the property instead.",
+             "HttpBinder",
+            DiagnosticSeverity.Warning,
+            true);
 
     public static void ReportDiagnostics(SourceProductionContext context, BoundType boundType)
     {
@@ -30,7 +30,7 @@ internal class ComplexTypeDetectedOnRouteOrQueryBinder
                 var sourceText = property.HttpBinderType == HttpBinderType.Query ? "the query string" : "route data";
 
                 var diag = Diagnostic.Create(
-                    _analyzer,
+                    _rule,
                     location,
                     property.Name,
                     boundType.TypeSymbol.Name,
