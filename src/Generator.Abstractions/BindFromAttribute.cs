@@ -19,25 +19,19 @@ namespace Blueprint.HttpBinder;
 /// </code>
 /// </example>
 /// </summary>
+/// <param name="type">
+/// The HTTP binding source to use when retrieving the property's value
+/// (e.g., <see cref="HttpBinderType.Query"/>, <see cref="HttpBinderType.Form"/>,
+/// or <see cref="HttpBinderType.Route"/>).
+/// </param>
 [AttributeUsage(AttributeTargets.Property)]
-public sealed class BindFromAttribute : Attribute
+public sealed class BindFromAttribute(HttpBinderType type) : Attribute
 {
-    /// <summary>
-    /// Initializes a new instance of the <see cref="BindFromAttribute"/> class,
-    /// specifying the HTTP source from which the property should be bound.
-    /// </summary>
-    /// <param name="type">
-    /// The HTTP binding source to use when retrieving the property's value
-    /// (e.g., <see cref="HttpBinderType.Query"/>, <see cref="HttpBinderType.Form"/>,
-    /// or <see cref="HttpBinderType.Route"/>).
-    /// </param>
-    public BindFromAttribute(HttpBinderType type) => Type = type;
-
     /// <inheritdoc />
-    public HttpBinderType Type { get; }
+    public HttpBinderType Type { get; } = type;
 
     /// <summary>
-    /// The name of the form field to bind to the associated property. If null, the property name is used.
+    /// The name of the form field to bind to the associated property. If not set, the property name is used.
     /// </summary>
     public string Name { get; set; }
 }

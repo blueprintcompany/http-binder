@@ -5,14 +5,14 @@ using System.Linq;
 
 namespace Blueprint.HttpBinder.Analyzers;
 
-internal class ComplexTypeDetectedOnRouteOrQueryBinderAnalyzer
+internal class FormFilesDetectedOnRouteOrQueryBinderAnalyzer
 {
-    public const string Id = "HB001";
+    public const string Id = "HB004";
 
     private static readonly DiagnosticDescriptor _rule = new(
             Id,
-            "Complex types cannot be bound from query or route",
-            "Property '{0}' on type '{1}' is a complex type and cannot be bound from {2}. If this is intended, use [HttpBinder(HttpBinderType = HttpBinderType.Form]) on the class or [BindFrom(HttpBinderType.Form)] on the property instead.",
+            "Form files and form file collections cannot be bound from query or route",
+            "Property '{0}' on type '{1}' is a form file or form file collection type and cannot be bound from {2}. If this is intended, use [HttpBinder(HttpBinderType = HttpBinderType.Form]) on the class or [BindFrom(HttpBinderType.Form)] on the property instead.",
              "HttpBinder",
             DiagnosticSeverity.Warning,
             true);
@@ -23,7 +23,7 @@ internal class ComplexTypeDetectedOnRouteOrQueryBinderAnalyzer
         {
             if (property.HttpBinderType is HttpBinderType.Query or HttpBinderType.Route)
             {
-                if (!property.IsComplex)
+                if (!property.IsFormFile)
                     continue;
 
                 var location = property.Symbol.Locations.FirstOrDefault() ?? Location.None;

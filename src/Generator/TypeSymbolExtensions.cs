@@ -39,7 +39,7 @@ internal static class TypeSymbolExtensions
             return FindCollectionType(inner) is not null;
         }
 
-        public (bool isNullable, bool isGuid, bool isEnum, bool isPrimitive, bool isString, bool isComplex) GetPropertyAttributes()
+        public (bool isNullable, bool isGuid, bool isEnum, bool isPrimitive, bool isString, bool isComplex, bool isFormFile) GetPropertyAttributes()
         {
             var isNullable = typeSymbol.NullableAnnotation == NullableAnnotation.Annotated;
 
@@ -70,9 +70,11 @@ internal static class TypeSymbolExtensions
                 SpecialType.System_Char or
                 SpecialType.System_String;
 
+            var isFormFile = typeSymbol.IsFormFile();
+
             var isComplex = !(isPrimitive || isString || isGuid || isEnum);
 
-            return (isNullable, isGuid, isEnum, isPrimitive, isString, isComplex);
+            return (isNullable, isGuid, isEnum, isPrimitive, isString, isComplex, isFormFile);
         }
 
         public ITypeSymbol? FindCollectionType()
@@ -100,5 +102,10 @@ internal static class TypeSymbolExtensions
 
             return null;
         }
+
+        public bool IsFormFile() =>
+            typeSymbol.ToDisplayString() is "Microsoft.AspNetCore.Http.IFormFile"
+            or "Microsoft.AspNetCore.Http.IFormFileCollection"
+            or "System.Collections.Generic.IEnumerable<Microsoft.AspNetCore.Http.IFormFile>";
     }
 }

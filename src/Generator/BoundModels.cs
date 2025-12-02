@@ -11,7 +11,7 @@ namespace Blueprint.HttpBinder;
 /// </summary>
 internal sealed class BoundProperty(IPropertySymbol symbol, string keyName, HttpBinderType httpBinderType, bool isNullable,
     bool isCollection, ITypeSymbol? collectionType, bool isEnum, bool isGuid, bool isPrimitive,
-    bool isString, bool isComplex, bool isIgnored, List<BoundProperty>? children)
+    bool isString, bool isComplex, bool isFormFile, bool isIgnored, List<BoundProperty>? children)
 {
 
     /// <summary>
@@ -80,6 +80,14 @@ internal sealed class BoundProperty(IPropertySymbol symbol, string keyName, Http
     /// </summary>
     public bool IsComplex { get; } = isComplex;
 
+    /// <summary>
+    /// Whether the property is a form file or form file collection.
+    /// </summary>
+    public bool IsFormFile { get; } = isFormFile;
+
+    /// <summary>
+    /// Whether the property should be skipped when generating the code.
+    /// </summary>
     public bool IsIgnored { get; } = isIgnored;
 
     /// <summary>
@@ -98,6 +106,7 @@ internal sealed class BoundProperty(IPropertySymbol symbol, string keyName, Http
             true,
              false,
             null,
+            false,
             false,
             false,
             false,

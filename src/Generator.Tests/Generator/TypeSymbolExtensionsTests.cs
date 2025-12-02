@@ -143,7 +143,7 @@ public class TypeSymbolExtensionsTests
 
         var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
 
-        var (isNullable, _, _, _, _, _) = prop.Type.GetPropertyAttributes();
+        var (isNullable, _, _, _, _, _, _) = prop.Type.GetPropertyAttributes();
 
         await Assert.That(isNullable).IsTrue();
     }
@@ -160,7 +160,7 @@ public class TypeSymbolExtensionsTests
 
         var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
 
-        var (_, isGuid, _, _, _, _) = prop.Type.GetPropertyAttributes();
+        var (_, isGuid, _, _, _, _, _) = prop.Type.GetPropertyAttributes();
 
         await Assert.That(isGuid).IsTrue();
     }
@@ -175,7 +175,7 @@ public class TypeSymbolExtensionsTests
 
         var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
 
-        var (_, _, isEnum, _, _, _) = prop.Type.GetPropertyAttributes();
+        var (_, _, isEnum, _, _, _, _) = prop.Type.GetPropertyAttributes();
 
         await Assert.That(isEnum).IsTrue();
     }
@@ -191,7 +191,7 @@ public class TypeSymbolExtensionsTests
 
         var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
 
-        var (_, _, _, isPrimitive, _, _) = prop.Type.GetPropertyAttributes();
+        var (_, _, _, isPrimitive, _, _, _) = prop.Type.GetPropertyAttributes();
 
         await Assert.That(isPrimitive).IsTrue();
     }
@@ -207,7 +207,7 @@ public class TypeSymbolExtensionsTests
 
         var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
 
-        var (_, _, _, _, isString, _) = prop.Type.GetPropertyAttributes();
+        var (_, _, _, _, isString, _, _) = prop.Type.GetPropertyAttributes();
 
         await Assert.That(isString).IsTrue();
     }
@@ -224,9 +224,41 @@ public class TypeSymbolExtensionsTests
 
         var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
 
-        var (_, _, _, _, _, isComplex) = prop.Type.GetPropertyAttributes();
+        var (_, _, _, _, _, isComplex, _) = prop.Type.GetPropertyAttributes();
 
         await Assert.That(isComplex).IsTrue();
+    }
+
+    [Test]
+    public async Task GetPropertyAttributes_GivenAFormFile_ThenIsFormFileIsTrue()
+    {
+        var code = @"namespace A { 
+            public class T {
+                public Microsoft.AspNetCore.Http.IFormFile X { get; set; } 
+            } 
+        }";
+
+        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+
+        var (_, _, _, _, _, _, isFormFile) = prop.Type.GetPropertyAttributes();
+
+        await Assert.That(isFormFile).IsTrue();
+    }
+
+    [Test]
+    public async Task GetPropertyAttributes_GivenAFormFileCollection_ThenIsFormFileIsTrue()
+    {
+        var code = @"namespace A { 
+            public class T {
+                public Microsoft.AspNetCore.Http.IFormFileCollection X { get; set; } 
+            } 
+        }";
+
+        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+
+        var (_, _, _, _, _, _, isFormFile) = prop.Type.GetPropertyAttributes();
+
+        await Assert.That(isFormFile).IsTrue();
     }
 
     [Test]

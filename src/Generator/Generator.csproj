@@ -33,6 +33,7 @@
 		<None Include="$(OutputPath)\Generator.Abstractions.xml" Pack="true" PackagePath="lib\netstandard2.0" Visible="false" />
 	</ItemGroup>
 	<ItemGroup>
+		<!-- Analyzer reference: consumers get the attributes without shipping a DLL -->
 		<ProjectReference Include="..\Generator.Abstractions\Generator.Abstractions.csproj" PrivateAssets="All" />
 	</ItemGroup>
 </Project>
