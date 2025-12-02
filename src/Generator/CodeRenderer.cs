@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace HttpBinder.Generator;
+namespace Blueprint.HttpBinder;
 
 /// <summary>
 /// Emits the generated binder source for a DTO bound via BindAsync().

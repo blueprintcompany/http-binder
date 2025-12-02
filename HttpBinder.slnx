@@ -1,6 +1,0 @@
-<Solution>
-  <Project Path="src/HttpBinder.Generator.Abstractions/HttpBinder.Generator.Abstractions.csproj" />
-  <Project Path="src/HttpBinder.Generator.Tests/HttpBinder.Generator.Tests.csproj" />
-  <Project Path="src/HttpBinder.Generator/HttpBinder.Generator.csproj" />
-  <Project Path="src/HttpBinder.Sample/Sample.csproj" />
-</Solution>

@@ -1,7 +1,8 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using Blueprint.HttpBinder;
+using Microsoft.CodeAnalysis;
 using System.Linq;
 
-namespace HttpBinder.Generator.Analyzers;
+namespace Blueprint.HttpBinder.Analyzers;
 
 internal sealed class DictionaryTypeNotSupportedAnalyzer
 {

@@ -1,6 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 
-namespace HttpBinder.Generator;
+namespace Blueprint.HttpBinder;
 
 internal static class Utilities
 {

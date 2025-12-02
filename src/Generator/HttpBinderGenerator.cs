@@ -1,4 +1,4 @@
-using HttpBinder.Generator.Analyzers;
+using Blueprint.HttpBinder.Analyzers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
@@ -8,9 +8,9 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 
-[assembly: InternalsVisibleTo("HttpBinder.Generator.Tests")]
+[assembly: InternalsVisibleTo("Generator.Tests")]
 
-namespace HttpBinder.Generator
+namespace Blueprint.HttpBinder
 {
     // TODO:
     // - Support ignoring attribute
@@ -32,7 +32,7 @@ namespace HttpBinder.Generator
             var registryProvider = context.CompilationProvider.Select((compilation, _) => new AttributeRegistry(compilation));
 
             var candidateTypes = context.SyntaxProvider.ForAttributeWithMetadataName(
-                "HttpBinder.Generator.HttpBinderAttribute",
+                "Blueprint.HttpBinder.HttpBinderAttribute",
                 static (node, _) => node is TypeDeclarationSyntax,
                 static (syntaxCtx, _) => (INamedTypeSymbol)syntaxCtx.TargetSymbol
             );

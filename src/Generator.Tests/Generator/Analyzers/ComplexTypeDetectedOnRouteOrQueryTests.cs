@@ -1,10 +1,11 @@
-﻿using HttpBinder.Generator.Analyzers;
+﻿using Blueprint.HttpBinder;
+using Blueprint.HttpBinder.Analyzers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
 
-namespace HttpBinder.Generator.Tests.Generator.Analyzers;
+namespace Generator.Tests.Generator.Analyzers;
 
 internal class ComplexTypeDetectedOnRouteOrQueryBinderTests : CSharpSourceGeneratorTest<HttpBinderGenerator, DefaultVerifier>
 {
@@ -12,7 +13,7 @@ internal class ComplexTypeDetectedOnRouteOrQueryBinderTests : CSharpSourceGenera
     public async Task GivenAQueryClass_WhenAComplexObjectIsPresent_ThenShowsDiagnostic()
     {
         var code = @"
-        using HttpBinder.Generator;
+        using Blueprint.HttpBinder;
 
         [HttpBinder(HttpBinderType = HttpBinderType.Route)]
         public partial class UserQueryRequest
@@ -41,7 +42,7 @@ internal class ComplexTypeDetectedOnRouteOrQueryBinderTests : CSharpSourceGenera
     public async Task GivenAFormClass_WhenAComplexObjectIsPresent_ThenDoesNotShowDiagnostic()
     {
         var code = @"
-        using HttpBinder.Generator;
+        using Blueprint.HttpBinder;
 
         [HttpBinder(HttpBinderType = HttpBinderType.Form)]
         public partial class UserQueryRequest
@@ -69,7 +70,7 @@ internal class ComplexTypeDetectedOnRouteOrQueryBinderTests : CSharpSourceGenera
     public async Task GivenARouteClass_WhenAComplexObjectIsPresent_ThenShowsDiagnostic()
     {
         var code = @"
-        using HttpBinder.Generator;
+        using Blueprint.HttpBinder;
 
         [HttpBinder(HttpBinderType = HttpBinderType.Route)]
         public partial class UserQueryRequest
@@ -98,7 +99,7 @@ internal class ComplexTypeDetectedOnRouteOrQueryBinderTests : CSharpSourceGenera
     public async Task GivenARouteClass_WhenComplexPropertyOverridesWithBindFromForm_ThenDoesNotShowDiagnostic()
     {
         var code = @"
-        using HttpBinder.Generator;
+        using Blueprint.HttpBinder;
 
         [HttpBinder(HttpBinderType = HttpBinderType.Route)]
         public partial class UserQueryRequest

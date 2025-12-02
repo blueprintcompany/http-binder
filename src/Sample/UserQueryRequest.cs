@@ -1,4 +1,4 @@
-using HttpBinder.Generator;
+using Blueprint.HttpBinder;
 
 namespace Sample;
 

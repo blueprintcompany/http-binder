@@ -1,7 +1,7 @@
 using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 
-namespace HttpBinder.Generator;
+namespace Blueprint.HttpBinder;
 
 /// <summary>
 /// Represents a single property that will be bound at runtime. This model

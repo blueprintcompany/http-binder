@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Blueprint.HttpBinder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace HttpBinder.Generator.Tests.Generator;
+namespace Generator.Tests.Generator;
 
 internal static class TestBase
 {

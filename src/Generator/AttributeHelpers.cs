@@ -1,9 +1,9 @@
-﻿namespace HttpBinder.Generator;
+﻿namespace Blueprint.HttpBinder;
 
 internal static class AttributeHelpers
 {
     public const string Source = @"
-        namespace HttpBinder.Generator
+        namespace Blueprint.HttpBinder
         {
             /// <summary>
             /// Specifies the HTTP binder type to associate with a class for source-generated HTTP binding behavior using BindAsync().

@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HttpBinder.Generator.Analyzers;
+namespace Blueprint.HttpBinder.Analyzers;
 
 internal class ComplexTypeDetectedOnRouteOrQueryBinderAnalyzer
 {

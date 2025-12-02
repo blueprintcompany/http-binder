@@ -1,10 +1,11 @@
-﻿using HttpBinder.Generator.Analyzers;
+﻿using Blueprint.HttpBinder;
+using Blueprint.HttpBinder.Analyzers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
 
-namespace HttpBinder.Generator.Tests.Generator.Analyzers;
+namespace Generator.Tests.Generator.Analyzers;
 
 internal class DictionaryTypeNotSupportedAnalyzerTests : CSharpSourceGeneratorTest<HttpBinderGenerator, DefaultVerifier>
 {
@@ -12,7 +13,7 @@ internal class DictionaryTypeNotSupportedAnalyzerTests : CSharpSourceGeneratorTe
     public async Task GivenADictionaryProperty_WhenPresent_ThenShowsDiagnostic()
     {
         var code = @"
-            using HttpBinder.Generator;
+            using Blueprint.HttpBinder;
             using System.Collections.Generic;
 
             [HttpBinder]
@@ -41,7 +42,7 @@ internal class DictionaryTypeNotSupportedAnalyzerTests : CSharpSourceGeneratorTe
     public async Task GivenANonDictionaryProperty_WhenPresent_ThenDoesNotShowDiagnostic()
     {
         var code = @"
-            using HttpBinder.Generator;
+            using Blueprint.HttpBinder;
 
             [HttpBinder]
             public partial class UserQueryRequest

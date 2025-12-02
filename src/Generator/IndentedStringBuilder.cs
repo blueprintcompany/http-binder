@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace HttpBinder.Generator;
+namespace Blueprint.HttpBinder;
 
 /// <summary>
 /// Simple utility class to assist with indenting generated source code.

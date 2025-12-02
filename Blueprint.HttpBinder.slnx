@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="src/Generator.Abstractions/Generator.Abstractions.csproj" />
+  <Project Path="src/Generator.Tests/Generator.Tests.csproj" />
+  <Project Path="src/Generator/Generator.csproj" />
+  <Project Path="src/Sample/Sample.csproj" />
+</Solution>

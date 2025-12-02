@@ -2,8 +2,9 @@
 
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
-		<RootNamespace>HttpBinder.Generator</RootNamespace>
+		<RootNamespace>Blueprint.HttpBinder</RootNamespace>
 		<IsPackable>false</IsPackable>
+		<LangVersion>Latest</LangVersion>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	</PropertyGroup>
 
