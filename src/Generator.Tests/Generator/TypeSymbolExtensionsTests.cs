@@ -12,10 +12,6 @@ public class TypeSymbolExtensionsTests
         return symbol!;
     }
 
-    // =====================================================================
-    // GetFullTypeName
-    // =====================================================================
-
     [Test]
     public async Task GetFullTypeName_GivenATypeSymbol_ThenReturnsFullyQualifiedName()
     {
@@ -27,10 +23,6 @@ public class TypeSymbolExtensionsTests
         await Assert.That(result).IsEqualTo("global::A.Foo");
     }
 
-    // =====================================================================
-    // GetMinimalTypeName
-    // =====================================================================
-
     [Test]
     public async Task GetMinimalTypeName_GivenATypeSymbol_ThenReturnsMinimalName()
     {
@@ -41,10 +33,6 @@ public class TypeSymbolExtensionsTests
 
         await Assert.That(result).IsEqualTo("Foo");
     }
-
-    // =====================================================================
-    // IsDictionary
-    // =====================================================================
 
     [Test]
     public async Task IsDictionary_GivenADictionaryType_ThenReturnsTrue()
@@ -111,10 +99,6 @@ public class TypeSymbolExtensionsTests
         await Assert.That(prop.Type.IsDictionary()).IsFalse();
     }
 
-    // =====================================================================
-    // IsNestedCollection
-    // =====================================================================
-
     [Test]
     public async Task IsNestedCollection_GivenANestedCollection_ThenReturnsTrue()
     {
@@ -151,7 +135,11 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetPropertyAttributes_GivenNullableInt_ThenIsNullableIsTrue()
     {
-        var code = @"namespace A { public class T { public int? X {get;set;} } }";
+        var code = @"namespace A { 
+            public class T { 
+                public int? X { get; set; } 
+            } 
+        }";
 
         var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
 
