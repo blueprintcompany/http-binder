@@ -17,16 +17,20 @@ namespace Blueprint.HttpBinder
     {
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
+            context.RegisterPostInitializationOutput(static postInitializationContext =>
+            {
+                postInitializationContext.AddEmbeddedAttributeDefinition();
+            });
+
             var candidateTypes = context.SyntaxProvider.ForAttributeWithMetadataName(
-                "Blueprint.HttpBinder.HttpBinderAttribute",
+                AttributeConstants.HttpBinderAttribute,
                 static (node, _) => node is TypeDeclarationSyntax,
-                (syntaxCtx, cancellationToken) => BuildModel((INamedTypeSymbol?)syntaxCtx.TargetSymbol, cancellationToken)
+                (syntaxCtx, cancellationToken) => BuildModel((INamedTypeSymbol?)syntaxCtx.TargetSymbol, syntaxCtx.Attributes[0], cancellationToken)
             ).WithTrackingName(TrackingConstants.InitialExtraction)
             .Where(static m => m is not null)
             .Select(static (m, _) => m!)
             .WithTrackingName(TrackingConstants.RemovingNulls);
 
-            // Emit generated files + diagnostics
             context.RegisterSourceOutput(candidateTypes, static (sourceProductionContext, model) =>
             {
                 var source = CodeRenderer.Render(model);
@@ -58,7 +62,7 @@ namespace Blueprint.HttpBinder
             return map.Values;
         }
 
-        private static BoundType? BuildModel(INamedTypeSymbol? typeSymbol, CancellationToken cancellation)
+        private static BoundType? BuildModel(INamedTypeSymbol? typeSymbol, AttributeData attributeData, CancellationToken cancellation)
         {
             if (typeSymbol is null)
             {
@@ -67,20 +71,9 @@ namespace Blueprint.HttpBinder
 
             cancellation.ThrowIfCancellationRequested();
 
-            // Resolve the [HttpBinder] attribute and get the class-level default HttpBinderType
-            var httpBinderAttribute = typeSymbol
-                .GetAttributes()
-                .FirstOrDefault(a => a.AttributeClass?.GetFullTypeName() == AttributeConstants.HttpBinderAttribute);
-
-            if (httpBinderAttribute is null)
-            {
-                // Should not happen given the ForAttributeWithMetadataName filter, but be defensive.
-                return null;
-            }
-
             var classHttpBinderType = HttpBinderType.Form;
 
-            foreach (var namedArgument in httpBinderAttribute.NamedArguments)
+            foreach (var namedArgument in attributeData!.NamedArguments)
             {
                 if (namedArgument.Key == "HttpBinderType")
                 {
@@ -126,7 +119,7 @@ namespace Blueprint.HttpBinder
                 ctorParameterNames = names.MoveToImmutable();
             }
 
-            var @namespace = typeSymbol.ContainingNamespace?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? string.Empty;
+            var @namespace = typeSymbol.ContainingNamespace?.ToDisplayString() ?? string.Empty;
             var name = typeSymbol.Name;
             var fullName = typeSymbol.GetFullTypeName();
 
@@ -154,7 +147,7 @@ namespace Blueprint.HttpBinder
 
             foreach (var attribute in attributes)
             {
-                var attrName = attribute.AttributeClass?.GetFullTypeName();
+                var attrName = attribute.AttributeClass?.ToDisplayString();
                 if (attrName is null)
                     continue;
 
@@ -188,7 +181,7 @@ namespace Blueprint.HttpBinder
 
             var collectionType = type.FindCollectionType();
             var isCollection = collectionType is not null;
-            var typeName = isCollection ? collectionType!.GetFullTypeName() : type.GetFullTypeName();
+            var typeName = isCollection ? collectionType!.ToDisplayString() : type.ToDisplayString();
 
             ImmutableArray<BoundProperty> children = [];
 

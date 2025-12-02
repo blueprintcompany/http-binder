@@ -149,16 +149,15 @@ internal static class CodeRenderer
         if (property.IsCollection)
         {
             indent.AppendLine($"{typeName} {localName} = new {typeName}();");
-            return;
         }
-
-        if (property.IsNullable || property.IsString)
+        else if (property.IsNullable || property.IsString)
         {
-            indent.AppendLine($"{typeName}? {localName} = null;");
-            return;
+            indent.AppendLine($"{typeName} {localName} = null;");
         }
-
-        indent.AppendLine($"{typeName} {localName} = default;");
+        else
+        {
+            indent.AppendLine($"{typeName} {localName} = default;");
+        }
     }
 
     private static void EmitSimpleBinding(
