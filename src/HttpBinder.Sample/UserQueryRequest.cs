@@ -2,11 +2,12 @@ using HttpBinder.Generator;
 
 namespace Sample
 {
-    [HttpBinder(HttpBinderType = HttpBinderType.Form)]
+    [HttpBinder(HttpBinderType = HttpBinderType.Route)]
     public partial class UserQueryRequest : PagedRequestBase
     {
         public string? Search { get; set; }
 
+        [BindFrom(HttpBinderType.Form)]
         public ComplexTypeToo ComplexTypeToo { get; set; } = new();
     }
 

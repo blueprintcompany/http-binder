@@ -28,13 +28,17 @@ namespace HttpBinder.Generator
                 ctx.AddSource(AttributeHelpers.Name, SourceText.From(AttributeHelpers.Source, Encoding.UTF8));
             });
 
+            var registryProvider = context.CompilationProvider.Select((compilation, _) => new AttributeRegistry(compilation));
+
             var candidateTypes = context.SyntaxProvider.ForAttributeWithMetadataName(
                 "HttpBinder.Generator.HttpBinderAttribute",
                 static (node, _) => node is TypeDeclarationSyntax,
                 static (syntaxCtx, _) => (INamedTypeSymbol)syntaxCtx.TargetSymbol
             );
 
-            var models = candidateTypes.Select((type, _) => BuildModel(type));
+            var models = candidateTypes
+                .Combine(registryProvider)
+                .Select((tuple, _) => BuildModel(tuple.Left, tuple.Right));
 
             // Emit generated files + diagnostics
             context.RegisterSourceOutput(models, static (sourceProductionContext, model) =>
@@ -42,18 +46,9 @@ namespace HttpBinder.Generator
                 ComplexTypeDetectedOnRouteOrQueryBinder.ReportDiagnostics(sourceProductionContext, model);
 
                 var source = CodeRenderer.Render(model);
-                var hintName = GetHintName(model.TypeSymbol);
-                sourceProductionContext.AddSource(hintName, source);
+                sourceProductionContext.AddSource($"{model.TypeSymbol.Name}.g.cs", source);
             });
-
-            static string GetHintName(INamedTypeSymbol type)
-            {
-                var name = type.Name.Replace('<', '_').Replace('>', '_');
-                return $"{name}.g.cs";
-            }
         }
-
-
 
         private static IEnumerable<IPropertySymbol> GetAllInstanceProperties(INamedTypeSymbol type)
         {
@@ -79,23 +74,21 @@ namespace HttpBinder.Generator
             return map.Values;
         }
 
-        private static BoundType BuildModel(INamedTypeSymbol typeSymbol)
+        private static BoundType BuildModel(INamedTypeSymbol typeSymbol, AttributeRegistry registry)
         {
             // Find the [HttpBinder] attribute on the type
-            var binderAttr = typeSymbol.GetAttributes()
-                .FirstOrDefault(a =>
-                    a.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                    == "global::HttpBinder.Generator.HttpBinderAttribute");
+            var binderAttr = typeSymbol.GetAttributes().FirstOrDefault(a =>
+                SymbolEqualityComparer.Default.Equals(a.AttributeClass, registry.HttpBinderAttribute));
 
             var classDefaultSource = HttpBinderType.Form;
 
             if (binderAttr is not null)
             {
-                foreach (var na in binderAttr.NamedArguments)
+                foreach (var namedArgument in binderAttr.NamedArguments)
                 {
-                    if (na.Key == "HttpBinderType")
+                    if (namedArgument.Key == nameof(HttpBinderType))
                     {
-                        var tc = na.Value;
+                        var tc = namedArgument.Value;
 
                         if (tc.Value is int raw)
                         {
@@ -116,19 +109,21 @@ namespace HttpBinder.Generator
             var propertySymbols = GetAllInstanceProperties(typeSymbol);
 
             // Build per-property models
-            var boundProperties = propertySymbols.Select(BuildBoundProperty).ToList();
+            var boundProperties = propertySymbols
+                .Select(p => BuildBoundProperty(p, registry))
+                .ToList();
 
             // Apply default source if property has no override
-            foreach (var properties in boundProperties)
+            foreach (var prop in boundProperties)
             {
-                if (properties.HttpBinderType == HttpBinderType.Form && classDefaultSource != HttpBinderType.Form)
+                if (prop.HttpBinderType == HttpBinderType.Form &&
+                    classDefaultSource != HttpBinderType.Form)
                 {
-                    bool hasOverride = properties.Symbol.GetAttributes()
-                        .Any(a => Utilities.GetFullTypeName(a.AttributeClass!)
-                                  == "global::HttpBinder.BindFromAttribute");
+                    bool hasOverride = prop.Symbol.GetAttributes().Any(a =>
+                        SymbolEqualityComparer.Default.Equals(a.AttributeClass, registry.BindFromAttribute));
 
                     if (!hasOverride)
-                        properties.HttpBinderType = classDefaultSource;
+                        prop.HttpBinderType = classDefaultSource;
                 }
             }
 
@@ -144,32 +139,31 @@ namespace HttpBinder.Generator
 
             if (ctor is not null)
             {
-                foreach (var param in ctor.Parameters)
+                foreach (var parameter in ctor.Parameters)
                 {
                     var match = boundProperties.FirstOrDefault(p =>
-                        string.Equals(p.Name, param.Name, StringComparison.OrdinalIgnoreCase));
+                        string.Equals(p.Name, parameter.Name, StringComparison.OrdinalIgnoreCase));
 
                     if (match is not null)
-                        ctorMap.Add((param, match));
+                        ctorMap.Add((parameter, match));
                 }
             }
 
             return new BoundType(typeSymbol, boundProperties, ctor, ctorMap);
         }
 
-        private static BoundProperty BuildBoundProperty(IPropertySymbol propSymbol)
+        private static BoundProperty BuildBoundProperty(IPropertySymbol propertySymbol, AttributeRegistry registry)
         {
             var httpBinderType = HttpBinderType.Form;
 
-            string? customName = null;
+            var keyName = propertySymbol.Name;
 
-            foreach (var attr in propSymbol.GetAttributes())
+            var attributes = propertySymbol.GetAttributes();
+            foreach (var attribute in attributes)
             {
-                var fullName = Utilities.GetFullTypeName(attr.AttributeClass!);
-
-                if (fullName == "global::HttpBinder.BindFromAttribute")
+                if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, registry.BindFromAttribute))
                 {
-                    if (attr.ConstructorArguments[0].Value is int raw)
+                    if (attribute.ConstructorArguments[0].Value is int raw)
                     {
                         httpBinderType = raw switch
                         {
@@ -179,17 +173,15 @@ namespace HttpBinder.Generator
                         };
                     }
 
-                    foreach (var named in attr.NamedArguments)
+                    foreach (var namedArgument in attribute.NamedArguments)
                     {
-                        if (named.Key == "Name" && named.Value.Value is string s)
-                            customName = s;
+                        if (namedArgument.Key == "Name" && namedArgument.Value.Value is string newName)
+                            keyName = newName;
                     }
                 }
             }
 
-            var keyName = customName ?? propSymbol.Name;
-
-            var type = propSymbol.Type;
+            var type = propertySymbol.Type;
             (bool isNullable, bool isGuid, bool isEnum, bool isPrimitive, bool isString, bool isComplex) = GetPropertyAttributes(type);
 
             // Detect collections
@@ -202,7 +194,7 @@ namespace HttpBinder.Generator
             {
                 if (isComplex && type is INamedTypeSymbol typeNamed)
                 {
-                    children = [.. GetAllInstanceProperties(typeNamed).Select(BuildBoundProperty)];
+                    children = [.. GetAllInstanceProperties(typeNamed).Select(ps => BuildBoundProperty(ps, registry))];
                 }
             }
             else
@@ -213,7 +205,7 @@ namespace HttpBinder.Generator
 
                     if (collectionTypeIsComplex && collectionType is INamedTypeSymbol elementNamed)
                     {
-                        children = [.. GetAllInstanceProperties(elementNamed).Select(BuildBoundProperty)];
+                        children = [.. GetAllInstanceProperties(elementNamed).Select(ps => BuildBoundProperty(ps, registry))];
                     }
                 }
                 else
@@ -223,7 +215,7 @@ namespace HttpBinder.Generator
             }
 
             return new BoundProperty(
-                propSymbol,
+                propertySymbol,
                 keyName,
                 httpBinderType,
                 isNullable,

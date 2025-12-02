@@ -7,31 +7,33 @@ namespace HttpBinder.Generator.Analyzers;
 
 internal class ComplexTypeDetectedOnRouteOrQueryBinder
 {
+    internal const string _id = "HB001";
+
     private static readonly DiagnosticDescriptor _analyzer = new(
-            id: "HB001",
+            id: _id,
             title: "Complex types cannot be bound from query or route",
-            messageFormat: "Property '{0}' on type '{1}' is a complex type and cannot be bound from {2}. Use HttpBinderType.Form or [BindFromForm] instead.",
+            messageFormat: "Property '{0}' on type '{1}' is a complex type and cannot be bound from {2}. Use [HttpBinder(HttpBinderType = HttpBinderType.Form]) on the class or [BindFrom(HttpBinderType.Form)] on the property instead.",
             category: "HttpBinder",
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true);
 
-    public static void ReportDiagnostics(SourceProductionContext context, BoundType model)
+    public static void ReportDiagnostics(SourceProductionContext context, BoundType boundType)
     {
-        foreach (var prop in model.Properties)
+        foreach (var property in boundType.Properties)
         {
-            if (prop.HttpBinderType is HttpBinderType.Query or HttpBinderType.Route)
+            if (property.HttpBinderType is HttpBinderType.Query or HttpBinderType.Route)
             {
-                if (!prop.IsComplex)
+                if (!property.IsComplex)
                     continue;
 
-                var location = prop.Symbol.Locations.FirstOrDefault() ?? Location.None;
-                var sourceText = prop.HttpBinderType == HttpBinderType.Query ? "the query string" : "route data";
+                var location = property.Symbol.Locations.FirstOrDefault() ?? Location.None;
+                var sourceText = property.HttpBinderType == HttpBinderType.Query ? "the query string" : "route data";
 
                 var diag = Diagnostic.Create(
                     _analyzer,
                     location,
-                    prop.Name,
-                    model.TypeSymbol.Name,
+                    property.Name,
+                    boundType.TypeSymbol.Name,
                     sourceText);
 
                 context.ReportDiagnostic(diag);

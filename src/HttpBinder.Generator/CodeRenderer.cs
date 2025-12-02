@@ -8,14 +8,10 @@ namespace HttpBinder.Generator
 {
     /// <summary>
     /// Emits the generated binder source for a DTO bound via BindAsync().
-    /// Code prioritizes human readability and correct binding semantics.
+    /// The renderer prioritizes human readability of the generated code.
     /// </summary>
     internal static class CodeRenderer
     {
-        // ==================================================================
-        //  Entry
-        // ==================================================================
-
         public static string Render(BoundType model)
         {
             var sb = new StringBuilder();
@@ -46,10 +42,6 @@ namespace HttpBinder.Generator
 
             return sb.ToString();
         }
-
-        // ==================================================================
-        //  BindAsync
-        // ==================================================================
 
         private static void RenderBindMethod(IndentedStringBuilder indent, BoundType model)
         {
@@ -150,10 +142,6 @@ namespace HttpBinder.Generator
 
             return false;
         }
-
-        // ==================================================================
-        //  Per-property binding (root)
-        // ==================================================================
 
         private static void GeneratePropertyBinding(
             IndentedStringBuilder indent,
@@ -469,10 +457,6 @@ namespace HttpBinder.Generator
             indent.AppendLine($"    {listName}[{indexName}] = elementParsed;");
         }
 
-        // ==================================================================
-        //  Complex-type helpers (form-only)
-        // ==================================================================
-
         private static void RenderComplexHelpers(IndentedStringBuilder indent, BoundType model)
         {
             var emitted = new HashSet<string>(StringComparer.Ordinal);
@@ -664,10 +648,6 @@ namespace HttpBinder.Generator
             indent.Unindent();
             indent.AppendLine("}");
         }
-
-        // ==================================================================
-        //  Utility
-        // ==================================================================
 
         private static string GetSanitizedTypeName(ITypeSymbol type)
         {
