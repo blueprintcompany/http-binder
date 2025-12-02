@@ -1,38 +1,47 @@
-﻿using Blueprint.HttpBinder;
+﻿using Blueprint.HttpBinder.Extensions;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Diagnostics;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace Blueprint.HttpBinder.Analyzers;
 
-internal sealed class NestedCollectionsNotSupportedAnalyzer
+[DiagnosticAnalyzer(LanguageNames.CSharp)]
+public sealed class NestedCollectionsNotSupportedAnalyzer : DiagnosticAnalyzer
 {
     public const string Id = "HB003";
 
     private static readonly DiagnosticDescriptor _rule = new(
         Id,
         "Nested collections are not supported for HTTP binding",
-        "Property '{0}' is a collection of collection type which cannot be bound from form, query, or route sources",
+        "Property '{0}' on type '{1}' is a nested collection type and cannot be bound",
         "HttpBinder",
         DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        "Nested collections are ambiguous in HTTP binding and cannot be reliably parsed.");
+        isEnabledByDefault: true);
 
-    internal static void ReportDiagnostics(SourceProductionContext context, BoundType boundType)
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [_rule];
+
+    public override void Initialize(AnalysisContext context)
     {
-        foreach (var property in boundType.Properties)
-        {
-            if (!property.Symbol.Type.IsNestedCollection())
-                continue;
+        context.EnableConcurrentExecution();
+        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
 
-            var location = property.Symbol.Locations.FirstOrDefault() ?? Location.None;
+        context.RegisterSymbolAction(AnalyzeProperty, SymbolKind.Property);
+    }
 
-            var diagnostic = Diagnostic.Create(
-                _rule,
-                location,
-                property.Name,
-                boundType.TypeSymbol.Name);
+    private static void AnalyzeProperty(SymbolAnalysisContext ctx)
+    {
+        var prop = (IPropertySymbol)ctx.Symbol;
 
-            context.ReportDiagnostic(diagnostic);
-        }
+        if (!prop.Type.IsNestedCollection())
+            return;
+
+        var diagnostic = Diagnostic.Create(
+            _rule,
+            prop.Locations.FirstOrDefault(),
+            prop.Name,
+            prop.ContainingType.Name);
+
+        ctx.ReportDiagnostic(diagnostic);
     }
 }

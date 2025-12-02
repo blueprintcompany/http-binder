@@ -1,43 +1,62 @@
-﻿using Microsoft.CodeAnalysis;
-using System;
-using System.Collections.Generic;
+﻿using Blueprint.HttpBinder.Extensions;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Diagnostics;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace Blueprint.HttpBinder.Analyzers;
 
-internal class FormFilesDetectedOnRouteOrQueryBinderAnalyzer
+[DiagnosticAnalyzer(LanguageNames.CSharp)]
+public sealed class FormFilesDetectedOnRouteOrQueryBinderAnalyzer : DiagnosticAnalyzer
 {
     public const string Id = "HB004";
 
     private static readonly DiagnosticDescriptor _rule = new(
-            Id,
-            "Form files and form file collections cannot be bound from query or route",
-            "Property '{0}' on type '{1}' is a form file or form file collection type and cannot be bound from {2}. If this is intended, use [HttpBinder(HttpBinderType = HttpBinderType.Form]) on the class or [BindFrom(HttpBinderType.Form)] on the property instead.",
-             "HttpBinder",
-            DiagnosticSeverity.Warning,
-            true);
+        Id,
+        "Form file types cannot be bound from query or route",
+        "Property '{0}' on type '{1}' is a form file/form file collection and cannot be bound from {2}",
+        "HttpBinder",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
 
-    public static void ReportDiagnostics(SourceProductionContext context, BoundType boundType)
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [_rule];
+
+    public override void Initialize(AnalysisContext context)
     {
-        foreach (var property in boundType.Properties)
-        {
-            if (property.HttpBinderType is HttpBinderType.Query or HttpBinderType.Route)
-            {
-                if (!property.IsFormFile)
-                    continue;
+        context.EnableConcurrentExecution();
+        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
 
-                var location = property.Symbol.Locations.FirstOrDefault() ?? Location.None;
-                var sourceText = property.HttpBinderType == HttpBinderType.Query ? "the query string" : "route data";
+        context.RegisterSymbolAction(AnalyzeProperty, SymbolKind.Property);
+    }
 
-                var diag = Diagnostic.Create(
-                    _rule,
-                    location,
-                    property.Name,
-                    boundType.TypeSymbol.Name,
-                    sourceText);
+    private static void AnalyzeProperty(SymbolAnalysisContext ctx)
+    {
+        var prop = (IPropertySymbol)ctx.Symbol;
 
-                context.ReportDiagnostic(diag);
-            }
-        }
+        var bindFrom = prop.GetAttribute(AttributeConstants.BindFromAttribute);
+        if (bindFrom == null)
+            return;
+
+        if (!bindFrom.TryGetBinderType(out var binderType))
+            return;
+
+        if (binderType is not HttpBinderType.Query and not HttpBinderType.Route)
+            return;
+
+        bool isFormFile = prop.Type.IsFormFile();
+
+        if (!isFormFile)
+            return;
+
+        string src = binderType == HttpBinderType.Query ? "the query string" : "route data";
+
+        var diag = Diagnostic.Create(
+            _rule,
+            prop.Locations.FirstOrDefault(),
+            prop.Name,
+            prop.ContainingType.Name,
+            src);
+
+        ctx.ReportDiagnostic(diag);
     }
 }

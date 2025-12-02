@@ -1,38 +1,47 @@
-﻿using Blueprint.HttpBinder;
+﻿using Blueprint.HttpBinder.Extensions;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Diagnostics;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace Blueprint.HttpBinder.Analyzers;
 
-internal sealed class DictionaryTypeNotSupportedAnalyzer
+[DiagnosticAnalyzer(LanguageNames.CSharp)]
+internal sealed class DictionaryTypeNotSupportedAnalyzer : DiagnosticAnalyzer
 {
     public const string Id = "HB002";
 
     private static readonly DiagnosticDescriptor _rule = new(
         Id,
         "Dictionary types are not supported for HTTP binding",
-        "Property '{0}' is a dictionary type which cannot be bound from form, query, or route sources. This property will be ignored.",
+        "Property '{0}' on type '{1}' is a dictionary type and cannot be bound from HTTP sources",
         "HttpBinder",
         DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        "Dictionaries are ambiguous in HTTP binding and cannot be reliably parsed.");
+        isEnabledByDefault: true);
 
-    internal static void ReportDiagnostics(SourceProductionContext context, BoundType boundType)
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [_rule];
+
+    public override void Initialize(AnalysisContext context)
     {
-        foreach (var property in boundType.Properties)
-        {
-            if (!property.Symbol.Type.IsDictionary())
-                continue;
+        context.EnableConcurrentExecution();
+        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
 
-            var location = property.Symbol.Locations.FirstOrDefault() ?? Location.None;
+        context.RegisterSymbolAction(AnalyzeProperty, SymbolKind.Property);
+    }
 
-            var diagnostic = Diagnostic.Create(
-                _rule,
-                location,
-                property.Name,
-                boundType.TypeSymbol.Name);
+    private static void AnalyzeProperty(SymbolAnalysisContext ctx)
+    {
+        var prop = (IPropertySymbol)ctx.Symbol;
 
-            context.ReportDiagnostic(diagnostic);
-        }
+        if (!prop.Type.IsDictionary())
+            return;
+
+        var diagnostic = Diagnostic.Create(
+            _rule,
+            prop.Locations.FirstOrDefault(),
+            prop.Name,
+            prop.ContainingType.Name);
+
+        ctx.ReportDiagnostic(diagnostic);
     }
 }

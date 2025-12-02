@@ -1,10 +1,13 @@
-﻿using Blueprint.HttpBinder;
+﻿using Blueprint.HttpBinder.Extensions;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Diagnostics;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace Blueprint.HttpBinder.Analyzers;
 
-internal sealed class BindFromIgnoreDetectedWithOtherAttributesAnalyzer
+[DiagnosticAnalyzer(LanguageNames.CSharp)]
+public sealed class BindFromIgnoreDetectedWithOtherAttributesAnalyzer : DiagnosticAnalyzer
 {
     public const string Id = "HB005";
 
@@ -14,48 +17,36 @@ internal sealed class BindFromIgnoreDetectedWithOtherAttributesAnalyzer
         "Property '{0}' in '{1}' uses [BindFromIgnore] and another [Bind*] attribute. Only [BindFromIgnore] should be applied.",
         "HttpBinder",
         DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description: "A property marked with [BindFromIgnore] must not also specify any binding source attribute."
-    );
+        isEnabledByDefault: true);
 
-    internal static void ReportDiagnostics(SourceProductionContext context, BoundType boundType)
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [_rule];
+
+    public override void Initialize(AnalysisContext context)
     {
-        foreach (var property in boundType.Properties)
-        {
-            var hasIgnore = property.Symbol
-                .GetAttributes()
-                .Any(a => a.AttributeClass!.GetFullTypeName() ==
-                          "global::Blueprint.HttpBinder.BindFromIgnoreAttribute");
+        context.EnableConcurrentExecution();
+        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
 
-            if (!hasIgnore)
-                continue;
+        context.RegisterSymbolAction(AnalyzeProperty, SymbolKind.Property);
+    }
 
-            var hasOtherBind = property.Symbol
-                .GetAttributes()
-                .Any(a =>
-                {
-                    var name = a.AttributeClass!.GetFullTypeName();
-                    return name switch
-                    {
-                        "global::Blueprint.HttpBinder.BindFromAttribute" => true,
-                        _ => false
-                    };
-                });
+    private static void AnalyzeProperty(SymbolAnalysisContext ctx)
+    {
+        var prop = (IPropertySymbol)ctx.Symbol;
 
-            if (!hasOtherBind)
-                continue;
+        var hasIgnore = prop.HasAttribute(AttributeConstants.BindFromIgnoreAttribute);
+        if (!hasIgnore)
+            return;
 
-            var location = property.Symbol.Locations.FirstOrDefault() ?? Location.None;
+        var hasOther = prop.HasAttribute(AttributeConstants.BindFromAttribute);
+        if (!hasOther)
+            return;
 
-            var diagnostic = Diagnostic.Create(
-                _rule,
-                location,
-                property.Name,
-                boundType.TypeSymbol.Name
-            );
+        var diagnostic = Diagnostic.Create(
+            _rule,
+            prop.Locations.FirstOrDefault(),
+            prop.Name,
+            prop.ContainingType.Name);
 
-            context.ReportDiagnostic(diagnostic);
-        }
+        ctx.ReportDiagnostic(diagnostic);
     }
 }
-

@@ -1,14 +1,14 @@
 ﻿using Microsoft.CodeAnalysis;
 using System;
 
-namespace Blueprint.HttpBinder;
+namespace Blueprint.HttpBinder.Extensions;
 
 internal static class TypeSymbolExtensions
 {
     extension(ITypeSymbol typeSymbol)
     {
         public string GetFullTypeName()
-        => typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            => typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
         public string GetMinimalTypeName()
             => typeSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);

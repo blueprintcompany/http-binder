@@ -1,18 +1,17 @@
-using Blueprint.HttpBinder.Analyzers;
+using Blueprint.HttpBinder.Extensions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 [assembly: InternalsVisibleTo("Generator.Tests")]
 
 namespace Blueprint.HttpBinder
 {
-    // TODO:
-    // - Fix complex object analyzer
-    // - Caching - https://andrewlock.net/creating-a-source-generator-part-10-testing-your-incremental-generator-pipeline-outputs-are-cacheable/
     [Generator]
     public sealed class HttpBinderGenerator : IIncrementalGenerator
     {
@@ -21,26 +20,17 @@ namespace Blueprint.HttpBinder
             var candidateTypes = context.SyntaxProvider.ForAttributeWithMetadataName(
                 "Blueprint.HttpBinder.HttpBinderAttribute",
                 static (node, _) => node is TypeDeclarationSyntax,
-                static (syntaxCtx, _) => (INamedTypeSymbol)syntaxCtx.TargetSymbol
+                (syntaxCtx, cancellationToken) => BuildModel((INamedTypeSymbol?)syntaxCtx.TargetSymbol, cancellationToken)
             ).WithTrackingName(TrackingConstants.InitialExtraction)
             .Where(static m => m is not null)
+            .Select(static (m, _) => m!)
             .WithTrackingName(TrackingConstants.RemovingNulls);
 
-            var models = candidateTypes.Select(
-                static (typeSymbol, _) => BuildModel(typeSymbol)
-            );
-
             // Emit generated files + diagnostics
-            context.RegisterSourceOutput(models, static (sourceProductionContext, model) =>
+            context.RegisterSourceOutput(candidateTypes, static (sourceProductionContext, model) =>
             {
-                ComplexTypeDetectedOnRouteOrQueryBinderAnalyzer.ReportDiagnostics(sourceProductionContext, model);
-                DictionaryTypeNotSupportedAnalyzer.ReportDiagnostics(sourceProductionContext, model);
-                NestedCollectionsNotSupportedAnalyzer.ReportDiagnostics(sourceProductionContext, model);
-                FormFilesDetectedOnRouteOrQueryBinderAnalyzer.ReportDiagnostics(sourceProductionContext, model);
-                BindFromIgnoreDetectedWithOtherAttributesAnalyzer.ReportDiagnostics(sourceProductionContext, model);
-
                 var source = CodeRenderer.Render(model);
-                sourceProductionContext.AddSource($"{model.TypeSymbol.Name}.g.cs", source);
+                sourceProductionContext.AddSource($"{model.Name}.g.cs", source);
             });
         }
 
@@ -48,7 +38,7 @@ namespace Blueprint.HttpBinder
         {
             var map = new Dictionary<string, IPropertySymbol>(StringComparer.OrdinalIgnoreCase);
 
-            for (var current = type; current != null && current.SpecialType != SpecialType.System_Object; current = current.BaseType)
+            for (var current = type; current is not null && current.SpecialType != SpecialType.System_Object; current = current.BaseType)
             {
                 foreach (var p in current.GetMembers().OfType<IPropertySymbol>())
                 {
@@ -68,9 +58,25 @@ namespace Blueprint.HttpBinder
             return map.Values;
         }
 
-        private static BoundType BuildModel(INamedTypeSymbol typeSymbol)
+        private static BoundType? BuildModel(INamedTypeSymbol? typeSymbol, CancellationToken cancellation)
         {
-            var httpBinderAttribute = typeSymbol.GetAttributes().First(a => a.AttributeClass!.GetFullTypeName() == AttributeConstants.HttpBinderAttribute);
+            if (typeSymbol is null)
+            {
+                return null;
+            }
+
+            cancellation.ThrowIfCancellationRequested();
+
+            // Resolve the [HttpBinder] attribute and get the class-level default HttpBinderType
+            var httpBinderAttribute = typeSymbol
+                .GetAttributes()
+                .FirstOrDefault(a => a.AttributeClass?.GetFullTypeName() == AttributeConstants.HttpBinderAttribute);
+
+            if (httpBinderAttribute is null)
+            {
+                // Should not happen given the ForAttributeWithMetadataName filter, but be defensive.
+                return null;
+            }
 
             var classHttpBinderType = HttpBinderType.Form;
 
@@ -94,13 +100,11 @@ namespace Blueprint.HttpBinder
                 }
             }
 
-            var propertySymbols = GetAllInstanceProperties(typeSymbol);
-
-            var boundProperties = propertySymbols
+            var properties = GetAllInstanceProperties(typeSymbol)
                 .Select(p => BuildBoundProperty(p, classHttpBinderType))
-                .ToList();
+                .ToImmutableArray();
 
-            // Pick the "largest" public constructor
+            // Choose the "largest" public constructor, if any
             var ctors = typeSymbol.InstanceConstructors
                 .Where(c => c.DeclaredAccessibility == Accessibility.Public)
                 .OrderByDescending(c => c.Parameters.Length)
@@ -108,21 +112,31 @@ namespace Blueprint.HttpBinder
 
             var ctor = ctors.FirstOrDefault(c => c.Parameters.Length > 0);
 
-            var ctorMap = new List<(IParameterSymbol parameter, BoundProperty property)>();
+            var ctorParameterNames = new ImmutableArray<string>();
 
             if (ctor is not null)
             {
+                var names = ImmutableArray.CreateBuilder<string>(ctor.Parameters.Length);
+
                 foreach (var parameter in ctor.Parameters)
                 {
-                    var match = boundProperties.FirstOrDefault(p =>
-                        string.Equals(p.Name, parameter.Name, StringComparison.OrdinalIgnoreCase));
-
-                    if (match is not null)
-                        ctorMap.Add((parameter, match));
+                    names.Add(parameter.Name);
                 }
+
+                ctorParameterNames = names.MoveToImmutable();
             }
 
-            return new BoundType(typeSymbol, boundProperties, ctor, ctorMap);
+            var @namespace = typeSymbol.ContainingNamespace?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? string.Empty;
+            var name = typeSymbol.Name;
+            var fullName = typeSymbol.GetFullTypeName();
+
+            return new BoundType(
+                name,
+                @namespace,
+                fullName,
+                classHttpBinderType,
+                properties,
+                ctorParameterNames);
         }
 
         private static BoundProperty BuildBoundProperty(IPropertySymbol propertySymbol, HttpBinderType parentHttpBinderType)
@@ -132,76 +146,88 @@ namespace Blueprint.HttpBinder
 
             if (type.IsDictionary() || type.IsNestedCollection())
             {
-                return BoundProperty.Ignore(propertySymbol, httpBinderType);
+                return BoundProperty.Ignore(propertySymbol.Name, httpBinderType);
             }
 
             var keyName = propertySymbol.Name;
             var attributes = propertySymbol.GetAttributes();
+
             foreach (var attribute in attributes)
             {
-                if (attribute.AttributeClass!.GetFullTypeName() == AttributeConstants.BindFromIgnoreAttribute)
-                    return BoundProperty.Ignore(propertySymbol, httpBinderType);
+                var attrName = attribute.AttributeClass?.GetFullTypeName();
+                if (attrName is null)
+                    continue;
 
-                if (attribute.AttributeClass!.GetFullTypeName() == AttributeConstants.BindFromAttribute)
+                if (attrName == AttributeConstants.BindFromIgnoreAttribute)
                 {
-                    if (attribute.ConstructorArguments[0].Value is int raw)
-                    {
-                        httpBinderType = raw switch
-                        {
-                            1 => HttpBinderType.Query,
-                            2 => HttpBinderType.Route,
-                            _ => HttpBinderType.Form
-                        };
-                    }
+                    return BoundProperty.Ignore(propertySymbol.Name, httpBinderType);
+                }
+
+                if (attrName == AttributeConstants.BindFromAttribute)
+                {
+                    attribute.TryGetBinderType(out var parsedBinderType);
+                    httpBinderType = parsedBinderType;
 
                     foreach (var namedArgument in attribute.NamedArguments)
                     {
                         if (namedArgument.Key == nameof(BindFromAttribute.Name) && namedArgument.Value.Value is string newName)
+                        {
                             keyName = newName;
+                        }
                     }
                 }
             }
 
-            (bool isNullable, bool isGuid, bool isEnum, bool isPrimitive, bool isString, bool isComplex, bool isFormFile) = type.GetPropertyAttributes();
+            (bool isNullable,
+             bool isGuid,
+             bool isEnum,
+             bool isPrimitive,
+             bool isString,
+             bool isComplex,
+             bool isFormFile) = type.GetPropertyAttributes();
 
             var collectionType = type.FindCollectionType();
             var isCollection = collectionType is not null;
+            var typeName = isCollection ? collectionType!.GetFullTypeName() : type.GetFullTypeName();
 
-            List<BoundProperty>? children = null;
+            ImmutableArray<BoundProperty> children = [];
 
             if (isCollection)
             {
-                (bool _, bool collectionTypeIsGuid, bool collectionTypeIsEnum, bool collectionTypeIsPrimitive, bool collectionTypeIsString, bool collectionTypeIsComplex, bool collectionTypeIsFormFile) = collectionType!.GetPropertyAttributes();
+                // Inspect the element type when it's complex
+                (bool _,
+                 bool collectionTypeIsGuid,
+                 bool collectionTypeIsEnum,
+                 bool collectionTypeIsPrimitive,
+                 bool collectionTypeIsString,
+                 bool collectionTypeIsComplex,
+                 bool collectionTypeIsFormFile) = collectionType!.GetPropertyAttributes();
 
                 if (collectionTypeIsComplex && collectionType is INamedTypeSymbol elementNamed)
                 {
                     children = [.. GetAllInstanceProperties(elementNamed).Select(ps => BuildBoundProperty(ps, httpBinderType))];
                 }
             }
-            else
+            else if (!isCollection && isComplex && type is INamedTypeSymbol typeNamed)
             {
-                if (isComplex && type is INamedTypeSymbol typeNamed)
-                {
-                    children = [.. GetAllInstanceProperties(typeNamed).Select(ps => BuildBoundProperty(ps, httpBinderType))];
-                }
+                children = [.. GetAllInstanceProperties(typeNamed).Select(ps => BuildBoundProperty(ps, httpBinderType))];
             }
 
             return new BoundProperty(
-                propertySymbol,
-                keyName,
-                httpBinderType,
-                isNullable,
-                isCollection,
-                collectionType,
-                isEnum,
-                isGuid,
-                isPrimitive,
-                isString,
-                isComplex,
-                isFormFile,
-                false,
-                children
-            );
+                Name: propertySymbol.Name,
+                KeyName: keyName,
+                TypeName: typeName,
+                HttpBinderType: httpBinderType,
+                IsNullable: isNullable,
+                IsCollection: isCollection,
+                IsEnum: isEnum,
+                IsGuid: isGuid,
+                IsPrimitive: isPrimitive,
+                IsString: isString,
+                IsComplex: isComplex,
+                IsFormFile: isFormFile,
+                IsIgnored: false,
+                Children: children);
         }
     }
 }

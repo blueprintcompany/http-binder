@@ -8,10 +8,10 @@ public partial class UserQueryRequest : PagedRequestBase
     public string? Search { get; set; }
 
     [BindFrom(HttpBinderType.Form)]
-    public ComplexTypeToo ComplexTypeToo { get; set; } = new();
+    public ComplexTypeTwo ComplexTypeTwo { get; set; } = new();
 }
 
-public class ComplexTypeToo
+public class ComplexTypeTwo
 {
     public Guid Guid { get; set; }
     public List<int> Ints { get; set; } = [];
