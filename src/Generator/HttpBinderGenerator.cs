@@ -11,7 +11,6 @@ using System.Runtime.CompilerServices;
 namespace Blueprint.HttpBinder
 {
     // TODO:
-    // - Support ignoring attribute
     // - Fix complex object analyzer
     // - Caching - https://andrewlock.net/creating-a-source-generator-part-10-testing-your-incremental-generator-pipeline-outputs-are-cacheable/
     [Generator]
