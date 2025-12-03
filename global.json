@@ -1,9 +1,5 @@
 {
   "test": {
     "runner": "Microsoft.Testing.Platform"
-  },
-  "sdk": {
-    "version": "9.0.x",
-    "rollForward": "disable"
   }
 }
