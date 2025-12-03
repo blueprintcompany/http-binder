@@ -52,7 +52,7 @@ public sealed class FormFilesDetectedOnRouteOrQueryBinderAnalyzer : DiagnosticAn
         if (binderType is not HttpBinderType.Query and not HttpBinderType.Route)
             return;
 
-        bool isFormFile = prop.Type.IsFormFile();
+        bool isFormFile = prop.Type.IsSingleFormFile() || prop.Type.IsFormFileCollection();
 
         if (!isFormFile)
             return;

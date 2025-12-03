@@ -70,7 +70,7 @@ internal static class TypeSymbolExtensions
                 SpecialType.System_Char or
                 SpecialType.System_String;
 
-            var isFormFile = typeSymbol.IsFormFile();
+            var isFormFile = typeSymbol.IsSingleFormFile() || typeSymbol.IsFormFileCollection();
 
             var isComplex = !(isPrimitive || isString || isGuid || isEnum);
 
@@ -79,13 +79,15 @@ internal static class TypeSymbolExtensions
 
         public ITypeSymbol? FindCollectionType()
         {
-            if (typeSymbol is IArrayTypeSymbol arr)
+            if (typeSymbol.IsFormFileCollection())
+            {
+                return typeSymbol.ContainingAssembly.GetTypeByMetadataName("Microsoft.AspNetCore.Http.IFormFile");
+            }
+            else if (typeSymbol is IArrayTypeSymbol arr)
             {
                 return arr.ElementType;
             }
-            else if (typeSymbol is INamedTypeSymbol named &&
-                     named.IsGenericType &&
-                     named.TypeArguments.Length == 1)
+            else if (typeSymbol is INamedTypeSymbol named && named.IsGenericType && named.TypeArguments.Length == 1) // Analyzers take care of other cases where multiple types are provided.
             {
                 var baseName = named.ConstructedFrom.ToDisplayString();
 
@@ -103,9 +105,31 @@ internal static class TypeSymbolExtensions
             return null;
         }
 
-        public bool IsFormFile() =>
-            typeSymbol.ToDisplayString() is "Microsoft.AspNetCore.Http.IFormFile"
-            or "Microsoft.AspNetCore.Http.IFormFileCollection"
-            or "System.Collections.Generic.IEnumerable<Microsoft.AspNetCore.Http.IFormFile>";
+        public bool IsSingleFormFile() =>
+            typeSymbol.ToDisplayString() is "Microsoft.AspNetCore.Http.IFormFile";
+
+        public bool IsFormFileCollection()
+        {
+            // IFormFileCollection
+            if (typeSymbol.ToDisplayString() == "Microsoft.AspNetCore.Http.IFormFileCollection")
+                return true;
+
+            // Array: IFormFile[]
+            if (typeSymbol is IArrayTypeSymbol arr &&
+                arr.ElementType.ToDisplayString() == "Microsoft.AspNetCore.Http.IFormFile")
+                return true;
+
+            // Generic collections: IEnumerable<IFormFile>, List<IFormFile>, ICollection<IFormFile>, etc.
+            if (typeSymbol is INamedTypeSymbol named &&
+                named.IsGenericType &&
+                named.TypeArguments.Length == 1 &&
+                named.TypeArguments[0].ToDisplayString() == "Microsoft.AspNetCore.Http.IFormFile")
+            {
+                return true;
+            }
+
+            return false;
+        }
+
     }
 }

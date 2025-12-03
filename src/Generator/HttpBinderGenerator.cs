@@ -165,31 +165,34 @@ namespace Blueprint.HttpBinder
 
             ImmutableArray<BoundProperty> children = [];
 
-            if (isCollection)
+            if (!isFormFile)
             {
-                // Inspect the element type when it's complex
-                (bool _,
-                 bool collectionTypeIsGuid,
-                 bool collectionTypeIsEnum,
-                 bool collectionTypeIsPrimitive,
-                 bool collectionTypeIsString,
-                 bool collectionTypeIsComplex,
-                 bool collectionTypeIsFormFile) = collectionType!.GetPropertyAttributes();
-
-                if (collectionTypeIsComplex && collectionType is INamedTypeSymbol elementNamed)
+                if (isCollection)
                 {
-                    children = [.. GetAllInstanceProperties(elementNamed).Select(ps => BuildBoundProperty(ps, httpBinderType))];
+                    (bool _,
+                         bool collectionTypeIsGuid,
+                         bool collectionTypeIsEnum,
+                         bool collectionTypeIsPrimitive,
+                         bool collectionTypeIsString,
+                         bool collectionTypeIsComplex,
+                         bool collectionTypeIsFormFile) = collectionType!.GetPropertyAttributes();
+
+                    if (collectionTypeIsComplex && collectionType is INamedTypeSymbol elementNamed)
+                    {
+                        children = [.. GetAllInstanceProperties(elementNamed).Select(ps => BuildBoundProperty(ps, httpBinderType))];
+                    }
                 }
-            }
-            else if (!isCollection && isComplex && type is INamedTypeSymbol typeNamed)
-            {
-                children = [.. GetAllInstanceProperties(typeNamed).Select(ps => BuildBoundProperty(ps, httpBinderType))];
+                else if (!isCollection && isComplex && type is INamedTypeSymbol typeNamed)
+                {
+                    children = [.. GetAllInstanceProperties(typeNamed).Select(ps => BuildBoundProperty(ps, httpBinderType))];
+                }
             }
 
             return new BoundProperty(
                 Name: propertySymbol.Name,
                 KeyName: keyName,
                 TypeName: typeName,
+                DeclaredTypeName: type.ToDisplayString(),
                 HttpBinderType: httpBinderType,
                 IsNullable: isNullable,
                 IsCollection: isCollection,

@@ -305,7 +305,7 @@ public class TypeSymbolExtensionsTests
     }
 
     [Test]
-    public async Task IsFormFile_IFormFile_ReturnsTrue()
+    public async Task IsFormFile_GivenAIFormFile_ReturnsTrue()
     {
         var code = """
         using Microsoft.AspNetCore.Http;
@@ -316,13 +316,13 @@ public class TypeSymbolExtensionsTests
         """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "T").GetMembers("File")[0];
-        var result = prop.Type.IsFormFile();
+        var result = prop.Type.IsSingleFormFile();
 
         await Assert.That(result).IsTrue();
     }
 
     [Test]
-    public async Task IsFormFile_IFormFileCollection_ReturnsTrue()
+    public async Task IsFormFile_GivenAIFormFileCollection_ReturnsTrue()
     {
         var code = """
         using Microsoft.AspNetCore.Http;
@@ -333,13 +333,13 @@ public class TypeSymbolExtensionsTests
         """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "T").GetMembers("Files")[0];
-        var result = prop.Type.IsFormFile();
+        var result = prop.Type.IsFormFileCollection();
 
         await Assert.That(result).IsTrue();
     }
 
     [Test]
-    public async Task IsFormFile_IEnumerableIFormFile_ReturnsTrue()
+    public async Task IsFormFile_GivenAIEnumerableIFormFile_ReturnsTrue()
     {
         var code = """
         using Microsoft.AspNetCore.Http;
@@ -351,7 +351,43 @@ public class TypeSymbolExtensionsTests
         """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "T").GetMembers("Files")[0];
-        var result = prop.Type.IsFormFile();
+        var result = prop.Type.IsFormFileCollection();
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task IsFormFile_GivenAnArrayIFormFile_ReturnsTrue()
+    {
+        var code = """
+        using Microsoft.AspNetCore.Http;
+        using System.Collections.Generic;
+
+        public class T {
+            public IFormFile[] Files { get; set; }
+        }
+        """;
+
+        var prop = (IPropertySymbol)GetTestSymbol(code, "T").GetMembers("Files")[0];
+        var result = prop.Type.IsFormFileCollection();
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task IsFormFile_GivenAListIFormFile_ReturnsTrue()
+    {
+        var code = """
+        using Microsoft.AspNetCore.Http;
+        using System.Collections.Generic;
+
+        public class T {
+            public List<IFormFile> Files { get; set; }
+        }
+        """;
+
+        var prop = (IPropertySymbol)GetTestSymbol(code, "T").GetMembers("Files")[0];
+        var result = prop.Type.IsFormFileCollection();
 
         await Assert.That(result).IsTrue();
     }
@@ -371,7 +407,7 @@ public class TypeSymbolExtensionsTests
 
         foreach (var prop in t.GetMembers().OfType<IPropertySymbol>())
         {
-            var result = prop.Type.IsFormFile();
+            var result = prop.Type.IsSingleFormFile();
             await Assert.That(result).IsFalse();
         }
     }

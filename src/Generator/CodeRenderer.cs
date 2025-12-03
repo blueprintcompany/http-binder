@@ -117,6 +117,12 @@ internal static class CodeRenderer
 
         EmitLocalDeclaration(indent, property, local, elementType);
 
+        if (property.IsFormFile)
+        {
+            EmitFormFileBinding(indent, property);
+            return;
+        }
+
         if (property.IsCollection)
         {
             GenerateCollectionBinding(indent, property, local, usesForm);
@@ -138,10 +144,22 @@ internal static class CodeRenderer
         string local,
         string typeName)
     {
+        if (property.IsFormFile && property.IsCollection)
+        {
+            indent.AppendLine($"{property.DeclaredTypeName} {local} = null;");
+            return;
+        }
+
         if (property.IsCollection)
         {
             var listType = $"global::System.Collections.Generic.List<{typeName}>";
             indent.AppendLine($"{listType} {local} = new {listType}();");
+            return;
+        }
+
+        if (property.IsFormFile)
+        {
+            indent.AppendLine($"{typeName}? {local} = null;");
             return;
         }
 
@@ -158,6 +176,32 @@ internal static class CodeRenderer
         }
 
         indent.AppendLine($"{typeName} {local} = default;");
+    }
+
+    private static void EmitFormFileBinding(IndentedStringBuilder indent, BoundProperty property)
+    {
+        var local = ToCamelCase(property.Name);
+        var key = property.KeyName;
+
+        // user declared "IFormFileCollection"
+        if (property.DeclaredTypeName == "Microsoft.AspNetCore.Http.IFormFileCollection")
+        {
+            indent.AppendLine(
+                $"{local} = http.Request.Form.Files.GetFiles(\"{key}\");");
+            return;
+        }
+
+        // Otherwise treat as a collection of IFormFile (List<IFormFile>)
+        if (property.IsCollection)
+        {
+            indent.AppendLine(
+                $"{local} = new global::System.Collections.Generic.List<Microsoft.AspNetCore.Http.IFormFile>(http.Request.Form.Files.GetFiles(\"{key}\"));");
+            return;
+        }
+
+        // Scalar IFormFile
+        indent.AppendLine(
+            $"{local} = http.Request.Form.Files.GetFile(\"{key}\");");
     }
 
     private static void EmitSimpleBinding(
@@ -192,7 +236,7 @@ internal static class CodeRenderer
 
             default:
                 indent.AppendLine(
-                    $"var {rawVar} = form.TryGetValue(\"{key}\", out var {local}FormValue) && {local}FormValue.Count > 0 ? {local}Value.ToString() : null;");
+                    $"var {rawVar} = form.TryGetValue(\"{key}\", out var {local}FormValue) && {local}FormValue.Count > 0 ? {local}FormValue.ToString() : null;");
                 break;
         }
     }
@@ -344,6 +388,9 @@ internal static class CodeRenderer
 
         void Walk(BoundProperty p)
         {
+            if (p.IsFormFile)
+                return;
+
             if (p.IsComplex && !p.IsCollection && emitted.Add(p.TypeName))
                 RenderComplexHelper(indent, p.TypeName, p.ChildProperties);
 

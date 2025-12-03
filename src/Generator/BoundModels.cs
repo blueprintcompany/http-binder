@@ -9,6 +9,7 @@ internal sealed record BoundProperty(
     string Name,
     string KeyName,
     string TypeName,
+    string DeclaredTypeName,
     HttpBinderType HttpBinderType,
     bool IsNullable,
     bool IsCollection,
@@ -25,8 +26,9 @@ internal sealed record BoundProperty(
         new(
             Name: name,
             KeyName: name,
+            DeclaredTypeName: name,
             HttpBinderType: httpBinderType,
-            IsNullable: true,
+            IsNullable: false,
             IsCollection: false,
             TypeName: string.Empty,
             IsEnum: false,
