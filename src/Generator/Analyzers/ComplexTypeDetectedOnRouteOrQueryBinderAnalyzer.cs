@@ -34,21 +34,30 @@ public sealed class ComplexTypeDetectedOnRouteOrQueryBinderAnalyzer : Diagnostic
         var prop = (IPropertySymbol)ctx.Symbol;
 
         var bindFrom = prop.GetAttribute(AttributeConstants.BindFromAttribute);
-        if (bindFrom == null)
-            return;
 
-        var arg = bindFrom.ConstructorArguments.FirstOrDefault();
-        if (arg.Value is not int binderType)
-            return;
+        HttpBinderType binderType;
 
-        if (binderType != (int)HttpBinderType.Query && binderType != (int)HttpBinderType.Route)
+        if (bindFrom != null && bindFrom.TryGetBinderType(out var fromProperty))
+        {
+            binderType = fromProperty;
+        }
+        else
+        {
+            var classAttr = prop.ContainingType.GetAttribute(AttributeConstants.HttpBinderAttribute);
+            if (classAttr == null || !classAttr.TryGetBinderType(out var fromClass))
+                return;
+
+            binderType = fromClass;
+        }
+
+        if (binderType != HttpBinderType.Query && binderType != HttpBinderType.Route)
             return;
 
         var type = prop.Type;
         if (type.IsValueType || type.SpecialType == SpecialType.System_String || type.TypeKind == TypeKind.Enum)
             return;
 
-        string source = binderType == 1 ? "the query string" : "route data";
+        string source = binderType == HttpBinderType.Query ? "the query string" : "route data";
 
         var diagnostic = Diagnostic.Create(
             _rule,

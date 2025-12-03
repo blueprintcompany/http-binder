@@ -1,67 +1,36 @@
-﻿using Blueprint.HttpBinder;
-using Blueprint.HttpBinder.Analyzers;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
+﻿using Blueprint.HttpBinder.Analyzers;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
 
 namespace Generator.Tests.Generator.Analyzers;
 
-internal class DictionaryTypeNotSupportedAnalyzerTests : CSharpSourceGeneratorTest<HttpBinderGenerator, DefaultVerifier>
+internal class DictionaryTypeNotSupportedAnalyzerTests : CSharpAnalyzerVerifier<DictionaryTypeNotSupportedAnalyzer, DefaultVerifier>
 {
     [Test]
     public async Task GivenADictionaryProperty_WhenPresent_ThenShowsDiagnostic()
     {
-        var code = @"
-            using Blueprint.HttpBinder;
-            using System.Collections.Generic;
-
+        var code = TestHelpers.GetTestCode("""
             [HttpBinder]
             public partial class UserQueryRequest
             {
-                public Dictionary<string, string> Filters { get; set; } = new();
+                public Dictionary<string, string> {|HB002:Filters|} { get; set; } = new();
             }
-        ";
+            """);
 
-        var compilation = TestBase.Create(code);
-
-        var driver = CSharpGeneratorDriver
-            .Create(new HttpBinderGenerator())
-            .RunGenerators(compilation);
-
-        var result = driver.GetRunResult();
-
-        var diagnostic = result.Diagnostics
-            .SingleOrDefault(d => d.Id == DictionaryTypeNotSupportedAnalyzer.Id);
-
-        await Assert.That(diagnostic).IsNotNull();
-        await Assert.That(diagnostic.Severity).IsEqualTo(DiagnosticSeverity.Warning);
+        await VerifyAnalyzerAsync(code);
     }
 
     [Test]
     public async Task GivenANonDictionaryProperty_WhenPresent_ThenDoesNotShowDiagnostic()
     {
-        var code = @"
-            using Blueprint.HttpBinder;
-
+        var code = TestHelpers.GetTestCode("""
             [HttpBinder]
             public partial class UserQueryRequest
             {
-                public string Name { get; set; } = """";
+                public string Name { get; set; } = "";
             }
-        ";
+            """);
 
-        var compilation = TestBase.Create(code);
-
-        var driver = CSharpGeneratorDriver
-            .Create(new HttpBinderGenerator())
-            .RunGenerators(compilation);
-
-        var result = driver.GetRunResult();
-
-        var diagnostic = result.Diagnostics
-            .SingleOrDefault(d => d.Id == DictionaryTypeNotSupportedAnalyzer.Id);
-
-        await Assert.That(diagnostic).IsNull();
+        await VerifyAnalyzerAsync(code);
     }
 }

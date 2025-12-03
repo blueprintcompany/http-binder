@@ -1,69 +1,56 @@
-﻿using Blueprint.HttpBinder;
-using Blueprint.HttpBinder.Analyzers;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
+﻿using Blueprint.HttpBinder.Analyzers;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
 
 namespace Generator.Tests.Generator.Analyzers;
 
-internal class BindFromIgnoreDetectedWithOtherAttributesAnalyzerTests : CSharpSourceGeneratorTest<HttpBinderGenerator, DefaultVerifier>
+internal class BindFromIgnoreDetectedWithOtherAttributesAnalyzerTests : CSharpAnalyzerVerifier<BindFromIgnoreDetectedWithOtherAttributesAnalyzer, DefaultVerifier>
 {
+    [Test]
+    public async Task GivenNoSource_ThenHasNoDiagnostics()
+    {
+        var code = TestHelpers.GetTestCode(string.Empty);
+        await VerifyAnalyzerAsync(code);
+    }
+
+    [Test]
+    public async Task GivenAnNonHttpBinderClass_ThenHasNoDiagnostics()
+    {
+        var code = TestHelpers.GetTestCode("""
+            public class T
+            {
+                public int X { get; set; }
+            }
+            """);
+        await VerifyAnalyzerAsync(code);
+    }
+
     [Test]
     public async Task GivenIgnoreOnly_WhenNoOtherBindAttributes_ThenNoDiagnostic()
     {
-        var code = @"
-            using HttpBinder;
-
-            public enum HttpBinderType { Form, Query, Route }
-
+        var code = TestHelpers.GetTestCode("""
             public partial class Request
             {
                 [BindFromIgnore]
                 public int X { get; set; }
             }
-            ";
+            """);
 
-        var compilation = TestBase.Create(code);
-
-        var generator = new HttpBinderGenerator();
-        var driver = CSharpGeneratorDriver.Create(generator)
-            .RunGenerators(compilation);
-
-        var result = driver.GetRunResult();
-
-        var diagnostic = result.Diagnostics.SingleOrDefault(d => d.Id == BindFromIgnoreDetectedWithOtherAttributesAnalyzer.Id);
-
-        await Assert.That(diagnostic).IsNull();
+        await VerifyAnalyzerAsync(code);
     }
 
     [Test]
     public async Task GivenIgnoreAndBindAttribute_WhenBothPresent_ThenShowsDiagnostic()
     {
-        var code = @"
-            using HttpBinder;
-
-            public enum HttpBinderType { Form, Query, Route }
-
+        var code = TestHelpers.GetTestCode("""
             public partial class Request
             {
                 [BindFromIgnore]
                 [BindFrom(HttpBinderType.Query)]
-                public int X { get; set; }
+                public int {|HB005:X|} { get; set; }
             }
-            ";
+            """);
 
-        var compilation = TestBase.Create(code);
-
-        var generator = new HttpBinderGenerator();
-        var driver = CSharpGeneratorDriver.Create(generator)
-            .RunGenerators(compilation);
-
-        var result = driver.GetRunResult();
-
-        var diagnostic = result.Diagnostics.SingleOrDefault(d => d.Id == BindFromIgnoreDetectedWithOtherAttributesAnalyzer.Id);
-
-        await Assert.That(diagnostic).IsNotNull();
-        await Assert.That(diagnostic.Severity).IsEqualTo(DiagnosticSeverity.Warning);
+        await VerifyAnalyzerAsync(code);
     }
 }

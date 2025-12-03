@@ -68,24 +68,9 @@ namespace Blueprint.HttpBinder
 
             var classHttpBinderType = HttpBinderType.Form;
 
-            foreach (var namedArgument in attributeData!.NamedArguments)
+            if (attributeData.TryGetBinderType(out var parsedBinderType))
             {
-                if (namedArgument.Key == "HttpBinderType")
-                {
-                    var typedConstant = namedArgument.Value;
-
-                    if (typedConstant.Value is int raw)
-                    {
-                        classHttpBinderType = raw switch
-                        {
-                            1 => HttpBinderType.Query,
-                            2 => HttpBinderType.Route,
-                            _ => HttpBinderType.Form
-                        };
-                    }
-
-                    break;
-                }
+                classHttpBinderType = parsedBinderType;
             }
 
             var properties = GetAllInstanceProperties(typeSymbol)

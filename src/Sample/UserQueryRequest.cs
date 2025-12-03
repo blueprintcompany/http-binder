@@ -15,8 +15,8 @@ public partial class UserQueryRequest : PagedRequestBase
 
     //public IFormFile FormFile { get; set; } = null!;
 
-    //[BindFrom(HttpBinderType.Form)]
-    //public ComplexTypeTwo ComplexTypeTwo { get; set; } = new();
+    [BindFrom(HttpBinderType.Form)]
+    public ComplexTypeTwo ComplexTypeTwo { get; set; } = new();
 }
 
 public class ComplexTypeTwo

@@ -34,11 +34,20 @@ public sealed class FormFilesDetectedOnRouteOrQueryBinderAnalyzer : DiagnosticAn
         var prop = (IPropertySymbol)ctx.Symbol;
 
         var bindFrom = prop.GetAttribute(AttributeConstants.BindFromAttribute);
-        if (bindFrom == null)
-            return;
+        HttpBinderType binderType;
 
-        if (!bindFrom.TryGetBinderType(out var binderType))
-            return;
+        if (bindFrom != null && bindFrom.TryGetBinderType(out var fromProperty))
+        {
+            binderType = fromProperty;
+        }
+        else
+        {
+            var classAttr = prop.ContainingType.GetAttribute(AttributeConstants.HttpBinderAttribute);
+            if (classAttr == null || !classAttr.TryGetBinderType(out var fromClass))
+                return;
+
+            binderType = fromClass;
+        }
 
         if (binderType is not HttpBinderType.Query and not HttpBinderType.Route)
             return;

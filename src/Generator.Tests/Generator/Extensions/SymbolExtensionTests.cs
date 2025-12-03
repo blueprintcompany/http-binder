@@ -18,7 +18,7 @@ public class SymbolExtensionsTests
         public class T {}
         """;
 
-        var symbol = GetSymbol(code, "T");
+        var symbol = GetTestSymbol(code, "T");
         var result = symbol.HasAttribute("TestAttr");
 
         await Assert.That(result).IsTrue();
@@ -36,7 +36,7 @@ public class SymbolExtensionsTests
         public class T {}
         """;
 
-        var symbol = GetSymbol(code, "T");
+        var symbol = GetTestSymbol(code, "T");
         var result = symbol.HasAttribute("TestAttr");
 
         await Assert.That(result).IsFalse();
@@ -55,7 +55,7 @@ public class SymbolExtensionsTests
         public class T {}
         """;
 
-        var symbol = GetSymbol(code, "T");
+        var symbol = GetTestSymbol(code, "T");
         var result = symbol.GetAttribute("TestAttr");
 
         await Assert.That(result).IsNotNull();
@@ -74,7 +74,7 @@ public class SymbolExtensionsTests
         public class T {}
         """;
 
-        var symbol = GetSymbol(code, "T");
+        var symbol = GetTestSymbol(code, "T");
         var result = symbol.GetAttribute("TestAttr");
 
         await Assert.That(result).IsNull();
@@ -95,7 +95,7 @@ public class SymbolExtensionsTests
         public class T {}
         """;
 
-        var symbol = GetSymbol(code, "T");
+        var symbol = GetTestSymbol(code, "T");
         var result = symbol.HasAttribute("A.B.TestAttr");
 
         await Assert.That(result).IsTrue();

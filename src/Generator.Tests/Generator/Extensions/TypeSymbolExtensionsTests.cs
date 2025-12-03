@@ -10,7 +10,7 @@ public class TypeSymbolExtensionsTests
     public async Task GetFullTypeName_GivenATypeSymbol_ThenReturnsFullyQualifiedName()
     {
         var code = @"namespace A { public class Foo {} }";
-        var symbol = GetSymbol(code, "A.Foo");
+        var symbol = GetTestSymbol(code, "A.Foo");
 
         var result = symbol.GetFullTypeName();
 
@@ -21,7 +21,7 @@ public class TypeSymbolExtensionsTests
     public async Task GetMinimalTypeName_GivenATypeSymbol_ThenReturnsMinimalName()
     {
         var code = @"namespace A { public class Foo {} }";
-        var symbol = GetSymbol(code, "A.Foo");
+        var symbol = GetTestSymbol(code, "A.Foo");
 
         var result = symbol.GetMinimalTypeName();
 
@@ -34,7 +34,7 @@ public class TypeSymbolExtensionsTests
         var code = @"using System.Collections.Generic;
                      namespace A { public class T { public Dictionary<string,int> X {get;set;} } }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         await Assert.That(prop.Type.IsDictionary()).IsTrue();
     }
@@ -45,7 +45,7 @@ public class TypeSymbolExtensionsTests
         var code = @"using System.Collections.Generic;
                      namespace A { public class T { public IDictionary<string,int> X {get;set;} } }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         await Assert.That(prop.Type.IsDictionary()).IsTrue();
     }
@@ -56,7 +56,7 @@ public class TypeSymbolExtensionsTests
         var code = @"using System.Collections.Generic;
                      namespace A { public class T { public IReadOnlyDictionary<string,int> X {get;set;} } }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         await Assert.That(prop.Type.IsDictionary()).IsTrue();
     }
@@ -67,7 +67,7 @@ public class TypeSymbolExtensionsTests
         var code = @"using System.Collections.Generic;
                      namespace A { public class T { public List<int> X {get;set;} } }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         await Assert.That(prop.Type.IsDictionary()).IsFalse();
     }
@@ -78,7 +78,7 @@ public class TypeSymbolExtensionsTests
         var code = @"using System.Collections.Generic;
                      namespace A { public class T { public List<string> X {get;set;} } }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         await Assert.That(prop.Type.IsDictionary()).IsFalse();
     }
@@ -88,7 +88,7 @@ public class TypeSymbolExtensionsTests
     {
         var code = @"namespace A { public class T { public int X {get;set;} } }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         await Assert.That(prop.Type.IsDictionary()).IsFalse();
     }
@@ -99,7 +99,7 @@ public class TypeSymbolExtensionsTests
         var code = @"using System.Collections.Generic;
                      namespace A { public class T { public List<List<int>> X {get;set;} } }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         await Assert.That(prop.Type.IsNestedCollection()).IsTrue();
     }
@@ -110,7 +110,7 @@ public class TypeSymbolExtensionsTests
         var code = @"using System.Collections.Generic;
                      namespace A { public class T { public List<int> X {get;set;} } }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         await Assert.That(prop.Type.IsNestedCollection()).IsFalse();
     }
@@ -120,7 +120,7 @@ public class TypeSymbolExtensionsTests
     {
         var code = @"namespace A { public class T { public int X {get;set;} } }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         await Assert.That(prop.Type.IsNestedCollection()).IsFalse();
     }
@@ -135,7 +135,7 @@ public class TypeSymbolExtensionsTests
             } 
         }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         var (isNullable, _, _, _, _, _, _) = prop.Type.GetPropertyAttributes();
 
@@ -152,7 +152,7 @@ public class TypeSymbolExtensionsTests
             } 
         }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         var (_, isGuid, _, _, _, _, _) = prop.Type.GetPropertyAttributes();
 
@@ -167,7 +167,7 @@ public class TypeSymbolExtensionsTests
                         public class T { public E X {get;set;} }
                      }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         var (_, _, isEnum, _, _, _, _) = prop.Type.GetPropertyAttributes();
 
@@ -183,7 +183,7 @@ public class TypeSymbolExtensionsTests
             } 
         }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         var (_, _, _, isPrimitive, _, _, _) = prop.Type.GetPropertyAttributes();
 
@@ -199,7 +199,7 @@ public class TypeSymbolExtensionsTests
             } 
         }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         var (_, _, _, _, isString, _, _) = prop.Type.GetPropertyAttributes();
 
@@ -216,7 +216,7 @@ public class TypeSymbolExtensionsTests
             } 
         }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         var (_, _, _, _, _, isComplex, _) = prop.Type.GetPropertyAttributes();
 
@@ -232,7 +232,7 @@ public class TypeSymbolExtensionsTests
             } 
         }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         var (_, _, _, _, _, _, isFormFile) = prop.Type.GetPropertyAttributes();
 
@@ -248,7 +248,7 @@ public class TypeSymbolExtensionsTests
             } 
         }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         var (_, _, _, _, _, _, isFormFile) = prop.Type.GetPropertyAttributes();
 
@@ -264,7 +264,7 @@ public class TypeSymbolExtensionsTests
             } 
         }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         var result = prop.Type.FindCollectionType();
 
@@ -281,7 +281,7 @@ public class TypeSymbolExtensionsTests
             } 
         }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         var result = prop.Type.FindCollectionType();
 
@@ -297,7 +297,7 @@ public class TypeSymbolExtensionsTests
             } 
         }";
 
-        var prop = (IPropertySymbol)GetSymbol(code, "A.T").GetMembers("X")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
         var result = prop.Type.FindCollectionType();
 
@@ -315,7 +315,7 @@ public class TypeSymbolExtensionsTests
         }
         """;
 
-        var prop = (IPropertySymbol)GetSymbol(code, "T").GetMembers("File")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "T").GetMembers("File")[0];
         var result = prop.Type.IsFormFile();
 
         await Assert.That(result).IsTrue();
@@ -332,7 +332,7 @@ public class TypeSymbolExtensionsTests
         }
         """;
 
-        var prop = (IPropertySymbol)GetSymbol(code, "T").GetMembers("Files")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "T").GetMembers("Files")[0];
         var result = prop.Type.IsFormFile();
 
         await Assert.That(result).IsTrue();
@@ -350,7 +350,7 @@ public class TypeSymbolExtensionsTests
         }
         """;
 
-        var prop = (IPropertySymbol)GetSymbol(code, "T").GetMembers("Files")[0];
+        var prop = (IPropertySymbol)GetTestSymbol(code, "T").GetMembers("Files")[0];
         var result = prop.Type.IsFormFile();
 
         await Assert.That(result).IsTrue();
@@ -367,7 +367,7 @@ public class TypeSymbolExtensionsTests
         }
         """;
 
-        var t = GetSymbol(code, "T");
+        var t = GetTestSymbol(code, "T");
 
         foreach (var prop in t.GetMembers().OfType<IPropertySymbol>())
         {
