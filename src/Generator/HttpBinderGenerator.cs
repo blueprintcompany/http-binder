@@ -33,30 +33,6 @@ namespace Blueprint.HttpBinder
             });
         }
 
-        private static IEnumerable<IPropertySymbol> GetAllInstanceProperties(INamedTypeSymbol type)
-        {
-            var map = new Dictionary<string, IPropertySymbol>(StringComparer.OrdinalIgnoreCase);
-
-            for (var current = type; current is not null && current.SpecialType != SpecialType.System_Object; current = current.BaseType)
-            {
-                foreach (var p in current.GetMembers().OfType<IPropertySymbol>())
-                {
-                    if (p.IsStatic)
-                        continue;
-
-                    if (p.DeclaredAccessibility is not Accessibility.Public
-                        and not Accessibility.Protected
-                        and not Accessibility.ProtectedOrInternal)
-                        continue;
-
-                    if (!map.ContainsKey(p.Name))
-                        map[p.Name] = p;
-                }
-            }
-
-            return map.Values;
-        }
-
         private static BoundType? BuildModel(INamedTypeSymbol? typeSymbol, AttributeData attributeData, CancellationToken cancellation)
         {
             if (typeSymbol is null)
@@ -73,7 +49,7 @@ namespace Blueprint.HttpBinder
                 classHttpBinderType = parsedBinderType;
             }
 
-            var properties = GetAllInstanceProperties(typeSymbol)
+            var properties = GetAllViableProperties(typeSymbol)
                 .Select(p => BuildBoundProperty(p, classHttpBinderType, []))
                 .ToImmutableArray();
 
@@ -116,6 +92,33 @@ namespace Blueprint.HttpBinder
                 classHttpBinderType,
                 properties,
                 ctorParameterNames);
+        }
+
+        private static IEnumerable<IPropertySymbol> GetAllViableProperties(INamedTypeSymbol type)
+        {
+            var map = new Dictionary<string, IPropertySymbol>(StringComparer.OrdinalIgnoreCase);
+
+            for (var current = type; current is not null && current.SpecialType != SpecialType.System_Object; current = current.BaseType)
+            {
+                foreach (var propertySymbol in current.GetMembers().OfType<IPropertySymbol>())
+                {
+                    if (propertySymbol.IsStatic)
+                        continue;
+
+                    if (propertySymbol.DeclaredAccessibility is not Accessibility.Public
+                        and not Accessibility.Protected
+                        and not Accessibility.ProtectedOrInternal)
+                        continue;
+
+                    if (propertySymbol.SetMethod is null)
+                        continue;
+
+                    if (!map.ContainsKey(propertySymbol.Name))
+                        map[propertySymbol.Name] = propertySymbol;
+                }
+            }
+
+            return map.Values;
         }
 
         private static BoundProperty BuildBoundProperty(IPropertySymbol propertySymbol, HttpBinderType parentHttpBinderType, HashSet<string> recursionGuard)
@@ -191,12 +194,12 @@ namespace Blueprint.HttpBinder
 
                     if (collectionTypeIsComplex && collectionType is INamedTypeSymbol elementNamed)
                     {
-                        children = [.. GetAllInstanceProperties(elementNamed).Select(ps => BuildBoundProperty(ps, httpBinderType, recursionGuard))];
+                        children = [.. GetAllViableProperties(elementNamed).Select(ps => BuildBoundProperty(ps, httpBinderType, recursionGuard))];
                     }
                 }
                 else if (!isCollection && isComplex && type is INamedTypeSymbol typeNamed)
                 {
-                    children = [.. GetAllInstanceProperties(typeNamed).Select(ps => BuildBoundProperty(ps, httpBinderType, recursionGuard))];
+                    children = [.. GetAllViableProperties(typeNamed).Select(ps => BuildBoundProperty(ps, httpBinderType, recursionGuard))];
                 }
             }
 

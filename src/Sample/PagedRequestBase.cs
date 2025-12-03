@@ -15,4 +15,6 @@ public abstract class PagedRequestBase
 
     [BindFrom(HttpBinderType.Query)]
     public int PageSize { get; set; }
+
+    public int NoSetterItem => 10;
 }
