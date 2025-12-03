@@ -32,14 +32,14 @@
 		<None Include="..\..\README.md" Pack="true" PackagePath="\" />
 		<None Include="..\..\icon.png" Pack="true" PackagePath="\" />
 	</ItemGroup>
-	<!-- This ensures the library will be packaged as a source generator when we use `dotnet pack` -->
+	<!-- This ensures the library and abstractions will be packaged as a source generator when we use `dotnet pack` -->
 	<ItemGroup>
 		<None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
+		<None Include="$(OutputPath)\Generator.Abstractions.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 		<None Include="$(OutputPath)\Generator.Abstractions.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="false" />
 		<None Include="$(OutputPath)\Generator.Abstractions.xml" Pack="true" PackagePath="lib\netstandard2.0" Visible="false" />
 	</ItemGroup>
 	<ItemGroup>
-		<!-- Analyzer reference: consumers get the attributes without shipping a DLL -->
 		<ProjectReference Include="..\Generator.Abstractions\Generator.Abstractions.csproj" PrivateAssets="All" />
 	</ItemGroup>
 </Project>
