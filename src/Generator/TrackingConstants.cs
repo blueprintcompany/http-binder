@@ -6,6 +6,5 @@
 internal class TrackingConstants
 {
     public const string InitialExtraction = nameof(InitialExtraction);
-    public const string InitialExternalExtraction = nameof(InitialExternalExtraction);
     public const string RemovingNulls = nameof(RemovingNulls);
 }

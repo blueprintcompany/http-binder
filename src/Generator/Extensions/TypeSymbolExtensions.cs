@@ -42,39 +42,69 @@ internal static class TypeSymbolExtensions
         public (bool isNullable, bool isGuid, bool isEnum, bool isPrimitive, bool isString, bool isComplex, bool isFormFile) GetPropertyAttributes()
         {
             var isNullable = typeSymbol.NullableAnnotation == NullableAnnotation.Annotated;
+            var underlying = UnwrapNullable(typeSymbol);
 
-            if (typeSymbol is INamedTypeSymbol namedTypeSymbol &&
-                namedTypeSymbol.IsGenericType &&
-                namedTypeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
-            {
-                typeSymbol = namedTypeSymbol.TypeArguments[0];
-                isNullable = true;
-            }
+            var isString = underlying.SpecialType == SpecialType.System_String;
+            var isGuid = IsGuid(underlying);
+            var isEnum = underlying.TypeKind == TypeKind.Enum;
+            var isFormFile = underlying.IsSingleFormFile() || underlying.IsListOfFormFiles();
 
-            var isString = typeSymbol.SpecialType == SpecialType.System_String;
-            var isEnum = typeSymbol.TypeKind == TypeKind.Enum;
-            var isGuid = typeSymbol.GetFullTypeName() == "global::System.Guid";
-            var isPrimitive = typeSymbol.SpecialType is
-                SpecialType.System_Boolean or
-                SpecialType.System_Byte or
-                SpecialType.System_SByte or
-                SpecialType.System_Int16 or
-                SpecialType.System_UInt16 or
-                SpecialType.System_Int32 or
-                SpecialType.System_UInt32 or
-                SpecialType.System_Int64 or
-                SpecialType.System_UInt64 or
-                SpecialType.System_Single or
-                SpecialType.System_Double or
-                SpecialType.System_Decimal or
-                SpecialType.System_Char or
-                SpecialType.System_String;
+            // Normal primitives + "primitive-like" BCL types
+            var isSpecialPrimitive = IsSpecialPrimitive(underlying);
+            var isSimpleBcl = IsSimpleBclScalar(underlying);
 
-            var isFormFile = typeSymbol.IsSingleFormFile() || typeSymbol.IsListOfFormFiles();
-
-            var isComplex = !(isPrimitive || isString || isGuid || isEnum);
+            var isPrimitive = isSpecialPrimitive || isSimpleBcl;
+            var isComplex = !(isPrimitive || isString || isGuid || isEnum) && !isFormFile;
 
             return (isNullable, isGuid, isEnum, isPrimitive, isString, isComplex, isFormFile);
+
+            ITypeSymbol UnwrapNullable(ITypeSymbol type)
+            {
+                if (type is INamedTypeSymbol named &&
+                    named.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T &&
+                    named.TypeArguments.Length == 1)
+                {
+                    return named.TypeArguments[0];
+                }
+
+                return type;
+            }
+
+            bool IsGuid(ITypeSymbol underlyingType)
+            {
+                var name = underlyingType.ToDisplayString();
+
+                return name == "System.Guid";
+            }
+
+            bool IsSpecialPrimitive(ITypeSymbol underlyingType)
+                => underlyingType.SpecialType is
+                   SpecialType.System_Boolean or
+                   SpecialType.System_Char or
+                   SpecialType.System_SByte or
+                   SpecialType.System_Byte or
+                   SpecialType.System_Int16 or
+                   SpecialType.System_UInt16 or
+                   SpecialType.System_Int32 or
+                   SpecialType.System_UInt32 or
+                   SpecialType.System_Int64 or
+                   SpecialType.System_UInt64 or
+                   SpecialType.System_Single or
+                   SpecialType.System_Double or
+                   SpecialType.System_Decimal or
+                   SpecialType.System_DateTime;
+
+            bool IsSimpleBclScalar(ITypeSymbol underlyingType)
+            {
+                var name = underlyingType.ToDisplayString();
+
+                return name is
+                    "System.DateTime" or
+                    "System.DateTimeOffset" or
+                    "System.DateOnly" or
+                    "System.TimeOnly" or
+                    "System.TimeSpan";
+            }
         }
 
         public ITypeSymbol? FindCollectionType()

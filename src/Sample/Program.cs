@@ -1,5 +1,6 @@
 using Blueprint.HttpBinder;
 using Sample;
+using Sample.Enums;
 
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
@@ -40,9 +41,14 @@ public partial class UserQueryRequest : PagedRequestBase
     public IFormFileCollection FormFiles { get; set; } = null!;
     public List<IFormFile> FormFileList { get; set; } = [];
     public int IntProperty { get; set; }
+    public bool BoolProperty { get; set; }
     [BindFrom(HttpBinderType.Query, Name = "some_guid")]
     public Guid GuidProperty { get; set; }
     public EnumExample EnumProperty { get; set; }
+    //public DateTime? NullableDateTime { get; set; }
+    //public DateTimeOffset? NullableDateTimeOffset { get; set; }
+    //public DateTime DateTime { get; set; }
+    //public DateTimeOffset? DateTimeOffset { get; set; }
     [BindFrom(HttpBinderType.Query)]
     public string? Search { get; set; }
     public NestedClass NestedClasses { get; set; } = new();
@@ -54,12 +60,7 @@ public partial class UserQueryRequest : PagedRequestBase
     }
 }
 
-public enum EnumExample
-{
-    One,
-    Two,
-    Three
-}
+
 
 public class UserQueryResponse
 {

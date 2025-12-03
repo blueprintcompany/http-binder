@@ -74,7 +74,7 @@ namespace Blueprint.HttpBinder
             }
 
             var properties = GetAllInstanceProperties(typeSymbol)
-                .Select(p => BuildBoundProperty(p, classHttpBinderType))
+                .Select(p => BuildBoundProperty(p, classHttpBinderType, []))
                 .ToImmutableArray();
 
             // Choose the "largest" public constructor, if any
@@ -118,10 +118,16 @@ namespace Blueprint.HttpBinder
                 ctorParameterNames);
         }
 
-        private static BoundProperty BuildBoundProperty(IPropertySymbol propertySymbol, HttpBinderType parentHttpBinderType)
+        private static BoundProperty BuildBoundProperty(IPropertySymbol propertySymbol, HttpBinderType parentHttpBinderType, HashSet<string> recursionGuard)
         {
             var httpBinderType = parentHttpBinderType;
             var type = propertySymbol.Type;
+
+            var declaredTypeName = type.ToDisplayString();
+            if (!recursionGuard.Add(declaredTypeName))
+            {
+                return BoundProperty.Ignore(propertySymbol.Name, httpBinderType);
+            }
 
             if (type.IsDictionary() || type.IsNestedCollection())
             {
@@ -185,12 +191,12 @@ namespace Blueprint.HttpBinder
 
                     if (collectionTypeIsComplex && collectionType is INamedTypeSymbol elementNamed)
                     {
-                        children = [.. GetAllInstanceProperties(elementNamed).Select(ps => BuildBoundProperty(ps, httpBinderType))];
+                        children = [.. GetAllInstanceProperties(elementNamed).Select(ps => BuildBoundProperty(ps, httpBinderType, recursionGuard))];
                     }
                 }
                 else if (!isCollection && isComplex && type is INamedTypeSymbol typeNamed)
                 {
-                    children = [.. GetAllInstanceProperties(typeNamed).Select(ps => BuildBoundProperty(ps, httpBinderType))];
+                    children = [.. GetAllInstanceProperties(typeNamed).Select(ps => BuildBoundProperty(ps, httpBinderType, recursionGuard))];
                 }
             }
 
@@ -198,7 +204,7 @@ namespace Blueprint.HttpBinder
                 Name: propertySymbol.Name,
                 KeyName: keyName,
                 TypeName: typeName,
-                DeclaredTypeName: type.ToDisplayString(),
+                DeclaredTypeName: declaredTypeName,
                 HttpBinderType: httpBinderType,
                 IsNullable: isNullable,
                 IsCollection: isCollection,

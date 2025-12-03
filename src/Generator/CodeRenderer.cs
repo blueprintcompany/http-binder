@@ -263,25 +263,18 @@ internal static class CodeRenderer
         {
             // Strings always get assigned to an empty string if not present so we want to avoid assignment if null or empty.
             indent.AppendLine($"if (!string.IsNullOrEmpty({rawVar})) {local} = {rawVar};");
-            return;
         }
-
-        if (property.IsGuid)
+        else if (property.IsGuid)
         {
-            indent.AppendLine($"if ({rawVar} != null && global::System.Guid.TryParse({rawVar}, out var {parsed})) {local} = {parsed};");
-            return;
+            indent.AppendLine($"if ({rawVar} != null && Guid.TryParse({rawVar}, out var {parsed})) {local} = {parsed};");
         }
-
-        if (property.IsEnum)
+        else if (property.IsEnum)
         {
-            indent.AppendLine($"if ({rawVar} != null && global::System.Enum.TryParse<{property.TypeName}>({rawVar}, true, out var {parsed})) {local} = {parsed};");
-            return;
+            indent.AppendLine($"if ({rawVar} != null && Enum.TryParse<{property.TypeName}>({rawVar}, true, out var {parsed})) {local} = {parsed};");
         }
-
-        if (property.IsPrimitive)
+        else
         {
             indent.AppendLine($"if ({rawVar} != null && {GetTryParseMethod(property.TypeName)}({rawVar}, out var {parsed})) {local} = {parsed};");
-            return;
         }
     }
 
@@ -367,7 +360,7 @@ internal static class CodeRenderer
                 break;
         }
 
-        if (elementType == "string" || elementType == "global::System.String")
+        if (elementType == "string")
         {
             indent.AppendLine($"if ({raw} != null) {local}[{indexExpr}] = {raw};");
             return;
@@ -375,19 +368,18 @@ internal static class CodeRenderer
 
         var parsed = $"{local}ElementParsed";
 
-        if (elementType == "global::System.Guid")
+        if (elementType == "Guid")
         {
-            indent.AppendLine($"if ({raw} != null && global::System.Guid.TryParse({raw}, out var {parsed})) {local}[{indexExpr}] = {parsed};");
-            return;
+            indent.AppendLine($"if ({raw} != null && Guid.TryParse({raw}, out var {parsed})) {local}[{indexExpr}] = {parsed};");
         }
-
-        if (elementType.Contains("enum"))
+        else if (elementType.Contains("enum"))
         {
-            indent.AppendLine($"if ({raw} != null && global::System.Enum.TryParse<{elementType}>({raw}, true, out var {parsed})) {local}[{indexExpr}] = {parsed};");
-            return;
+            indent.AppendLine($"if ({raw} != null && Enum.TryParse<{elementType}>({raw}, true, out var {parsed})) {local}[{indexExpr}] = {parsed};");
         }
-
-        indent.AppendLine($"if ({raw} != null && {GetTryParseMethod(elementType)}({raw}, out var {parsed})) {local}[{indexExpr}] = {parsed};");
+        else
+        {
+            indent.AppendLine($"if ({raw} != null && {GetTryParseMethod(elementType)}({raw}, out var {parsed})) {local}[{indexExpr}] = {parsed};");
+        }
     }
 
     private static void RenderComplexHelpers(IndentedStringBuilder indent, BoundType model)
@@ -485,13 +477,13 @@ internal static class CodeRenderer
 
     private static void EmitComplexChildSimple(
         IndentedStringBuilder indent,
-        BoundProperty c,
+        BoundProperty property,
         string local,
         string keyVar)
     {
         var raw = $"{local}Raw";
         indent.AppendLine($"var {raw} = form != null && form.TryGetValue({keyVar}, out var temp{local}) && temp{local}.Count > 0 ? temp{local}.ToString() : null;");
-        EmitValueParser(indent, c, local, raw);
+        EmitValueParser(indent, property, local, raw);
     }
 
     private static void EmitComplexChildCollection(
@@ -532,20 +524,27 @@ internal static class CodeRenderer
     private static string GetTryParseMethod(string typeName) =>
         typeName switch
         {
-            "global::System.Boolean" => "bool.TryParse",
-            "global::System.Byte" => "byte.TryParse",
-            "global::System.SByte" => "sbyte.TryParse",
-            "global::System.Int16" => "short.TryParse",
-            "global::System.UInt16" => "ushort.TryParse",
-            "global::System.Int32" => "int.TryParse",
-            "global::System.UInt32" => "uint.TryParse",
-            "global::System.Int64" => "long.TryParse",
-            "global::System.UInt64" => "ulong.TryParse",
-            "global::System.Single" => "float.TryParse",
-            "global::System.Double" => "double.TryParse",
-            "global::System.Decimal" => "decimal.TryParse",
+            "bool" => "bool.TryParse",
+            "byte" => "byte.TryParse",
+            "sbyte" => "sbyte.TryParse",
+            "short" => "short.TryParse",
+            "ushort" => "ushort.TryParse",
+            "int" => "int.TryParse",
+            "uint" => "uint.TryParse",
+            "long" => "long.TryParse",
+            "ulong" => "ulong.TryParse",
+            "float" => "float.TryParse",
+            "double" => "double.TryParse",
+            "decimal" => "decimal.TryParse",
+            "Guid" => "System.Guid.TryParse",
+            "DateTime" => "System.DateTime.TryParse",
+            "DateTimeOffset" => "System.DateTimeOffset.TryParse",
+            "DateOnly" => "System.DateOnly.TryParse",
+            "TimeOnly" => "System.TimeOnly.TryParse",
+            "TimeSpan" => "System.TimeSpan.TryParse",
             _ => "int.TryParse"
         };
+
 
     private static string Sanitize(string fullTypeName)
     {

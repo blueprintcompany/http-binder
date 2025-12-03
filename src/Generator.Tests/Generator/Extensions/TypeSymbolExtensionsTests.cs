@@ -256,6 +256,117 @@ public class TypeSymbolExtensionsTests
     }
 
     [Test]
+    public async Task GetPropertyAttributes_GivenDateTime_ThenIsPrimitiveIsTrue()
+    {
+        var code = @"namespace A {
+        public class T {
+            public System.DateTime X { get; set; }
+        }
+    }";
+
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
+        var (_, _, _, isPrimitive, _, isComplex, _) = prop.Type.GetPropertyAttributes();
+
+        await Assert.That(isPrimitive).IsTrue();
+        await Assert.That(isComplex).IsFalse();
+    }
+
+    [Test]
+    public async Task GetPropertyAttributes_GivenNullableDateTime_ThenIsNullableIsTrueAndPrimitive()
+    {
+        var code = @"namespace A {
+        public class T {
+            public System.DateTime? X { get; set; }
+        }
+    }";
+
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
+        var (isNullable, _, _, isPrimitive, _, isComplex, _) = prop.Type.GetPropertyAttributes();
+
+        await Assert.That(isNullable).IsTrue();
+        await Assert.That(isPrimitive).IsTrue();
+        await Assert.That(isComplex).IsFalse();
+    }
+
+    [Test]
+    public async Task GetPropertyAttributes_GivenDateTimeOffset_ThenIsPrimitiveIsTrue()
+    {
+        var code = @"namespace A {
+        public class T {
+            public System.DateTimeOffset X { get; set; }
+        }
+    }";
+
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
+        var (_, _, _, isPrimitive, _, isComplex, _) = prop.Type.GetPropertyAttributes();
+
+        await Assert.That(isPrimitive).IsTrue();
+        await Assert.That(isComplex).IsFalse();
+    }
+
+    [Test]
+    public async Task GetPropertyAttributes_GivenNullableDateTimeOffset_ThenIsNullableIsTrueAndPrimitive()
+    {
+        var code = @"namespace A {
+            public class T {
+                public System.DateTimeOffset? X { get; set; }
+            }
+        }";
+
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
+        var (isNullable, _, _, isPrimitive, _, isComplex, _) = prop.Type.GetPropertyAttributes();
+
+        await Assert.That(isNullable).IsTrue();
+        await Assert.That(isPrimitive).IsTrue();
+        await Assert.That(isComplex).IsFalse();
+    }
+
+    [Test]
+    public async Task GetPropertyAttributes_GivenDateOnly_ThenIsPrimitiveIsTrue()
+    {
+        var code = @"namespace A {
+        public class T {
+            public System.DateOnly X { get; set; }
+        }
+    }";
+
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
+        var (_, _, _, isPrimitive, _, _, _) = prop.Type.GetPropertyAttributes();
+
+        await Assert.That(isPrimitive).IsTrue();
+    }
+
+    [Test]
+    public async Task GetPropertyAttributes_GivenTimeOnly_ThenIsPrimitiveIsTrue()
+    {
+        var code = @"namespace A {
+        public class T {
+            public System.TimeOnly X { get; set; }
+        }
+    }";
+
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
+        var (_, _, _, isPrimitive, _, _, _) = prop.Type.GetPropertyAttributes();
+
+        await Assert.That(isPrimitive).IsTrue();
+    }
+
+    [Test]
+    public async Task GetPropertyAttributes_GivenTimeSpan_ThenIsPrimitiveIsTrue()
+    {
+        var code = @"namespace A {
+        public class T {
+            public System.TimeSpan X { get; set; }
+        }
+    }";
+
+        var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
+        var (_, _, _, isPrimitive, _, _, _) = prop.Type.GetPropertyAttributes();
+
+        await Assert.That(isPrimitive).IsTrue();
+    }
+
+    [Test]
     public async Task FindCollectionType_GivenArrayType_ThenReturnsElementType()
     {
         var code = @"namespace A { 
