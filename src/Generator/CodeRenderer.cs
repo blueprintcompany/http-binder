@@ -261,7 +261,8 @@ internal static class CodeRenderer
 
         if (property.IsString)
         {
-            indent.AppendLine($"if ({rawVar} != null) {local} = {rawVar};");
+            // Strings always get assigned to an empty string if not present so we want to avoid assignment if null or empty.
+            indent.AppendLine($"if (!string.IsNullOrEmpty({rawVar})) {local} = {rawVar};");
             return;
         }
 

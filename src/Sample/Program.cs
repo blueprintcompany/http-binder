@@ -15,7 +15,20 @@ app.MapPost("/users", async (UserQueryRequest req, HttpContext httpContext) =>
     // otherwise handle the request. For demonstration we simply return
     // the bound object as JSON.
 
-    return Results.Json(req);
+    return new UserQueryResponse
+    {
+        FormFileCount = req.FormFile is not null ? 1 : 0,
+        FormFilesCount = req.FormFiles.Count,
+        FormFileListCount = req.FormFileList.Count,
+        IntProperty = req.IntProperty,
+        GuidProperty = req.GuidProperty,
+        EnumProperty = req.EnumProperty,
+        Search = req.Search,
+        Page = req.Page,
+        PageSize = req.PageSize,
+        NestedClassNestedProperty = req.NestedClasses.NestedProperty,
+        NestedClassOtherProperty = req.NestedClasses.OtherProperty
+    };
 });
 
 app.Run();
@@ -27,9 +40,18 @@ public partial class UserQueryRequest : PagedRequestBase
     public IFormFileCollection FormFiles { get; set; } = null!;
     public List<IFormFile> FormFileList { get; set; } = [];
     public int IntProperty { get; set; }
-    [BindFrom(HttpBinderType.Query)]
+    [BindFrom(HttpBinderType.Query, Name = "some_guid")]
     public Guid GuidProperty { get; set; }
     public EnumExample EnumProperty { get; set; }
+    [BindFrom(HttpBinderType.Query)]
+    public string? Search { get; set; }
+    public NestedClass NestedClasses { get; set; } = new();
+
+    public partial class NestedClass
+    {
+        public string? NestedProperty { get; set; }
+        public int OtherProperty { get; set; }
+    }
 }
 
 public enum EnumExample
@@ -38,3 +60,20 @@ public enum EnumExample
     Two,
     Three
 }
+
+public class UserQueryResponse
+{
+    public int FormFileCount { get; set; }
+    public int FormFilesCount { get; set; }
+    public int FormFileListCount { get; set; }
+    public int IntProperty { get; set; }
+    public Guid GuidProperty { get; set; }
+    public EnumExample EnumProperty { get; set; }
+    public string? Search { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public string? NestedClassNestedProperty { get; set; }
+    public int NestedClassOtherProperty { get; set; }
+}
+
+public partial class Program { }

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+using Blueprint.HttpBinder;
 
 namespace Sample;
 
@@ -10,9 +10,9 @@ namespace Sample;
 /// </summary>
 public abstract class PagedRequestBase
 {
-    [FromQuery]
+    [BindFrom(HttpBinderType.Query)]
     public int Page { get; set; }
 
-    [FromQuery]
+    [BindFrom(HttpBinderType.Query)]
     public int PageSize { get; set; }
 }
