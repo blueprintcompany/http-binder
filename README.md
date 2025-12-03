@@ -36,21 +36,30 @@ The generator creates all binding logic during compilation.
 ## Example
 
 ```csharp
-[HttpBinder(HttpBinderType.Query)]
+[HttpBinder(HttpBinderType = HttpBinderType.Query)]
 public partial class SearchQuery
 {
     public string? Term { get; set; }
     public int Page { get; set; }
+}
 
-    [BindFrom(HttpBinderType.Form, Name = "override_name")]
-    public string? Extra { get; set; }
+[HttpBinder] // Default is HttpBinderType.Form
+public partial class FooForm
+{
+    public string Name { get; set; }
+    public int Age { get; set; }
 }
 ```
 
 Endpoint:
 
 ```csharp
-app.MapPost("/search", (SearchQuery query) =>
+app.MapGet("/search", (SearchQuery query) =>
+{
+    // HttpBinder handled everything
+});
+
+app.MapPost("/search", (FooForm form) =>
 {
     // HttpBinder handled everything
 });
