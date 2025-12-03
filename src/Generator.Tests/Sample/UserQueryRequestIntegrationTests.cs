@@ -66,6 +66,13 @@ internal class UserQueryRequestIntegrationTests
             // Primitive values (Form binder)
             { new StringContent("42"), "IntProperty" },
             { new StringContent("Two"), "EnumProperty" },
+
+            { new StringContent("true"), "BoolProperty" },
+            { new StringContent(""), "NullableBoolProperty" },
+            { new StringContent("2024-01-01T12:00:00Z"), "NullableDateTime" },
+            { new StringContent("2024-01-02T15:30:00Z"), "NullableDateTimeOffset" },
+            { new StringContent("2024-03-01T00:00:00Z"), "DateTime" },
+            { new StringContent("2024-03-02T10:00:00Z"), "DateTimeOffset" },
             { new StringContent(""), "NestedClasses.NestedProperty" },
             { new StringContent("123"), "NestedClasses.OtherProperty" },
         };
@@ -83,6 +90,21 @@ internal class UserQueryRequestIntegrationTests
         await Assert.That(result!.FormFileCount).IsEqualTo(1);
         await Assert.That(result.FormFilesCount).IsEqualTo(2);
         await Assert.That(result.FormFileListCount).IsEqualTo(2);
+
+        await Assert.That(result.BoolProperty).IsTrue();
+        await Assert.That(result.NullableBoolProperty).IsNull();
+
+        await Assert.That(result.NullableDateTime)
+            .IsEqualTo(DateTime.Parse("2024-01-01T12:00:00Z"));
+
+        await Assert.That(result.NullableDateTimeOffset)
+            .IsEqualTo(DateTimeOffset.Parse("2024-01-02T15:30:00Z"));
+
+        await Assert.That(result.DateTime)
+            .IsEqualTo(DateTime.Parse("2024-03-01T00:00:00Z"));
+
+        await Assert.That(result.DateTimeOffset)
+            .IsEqualTo(DateTimeOffset.Parse("2024-03-02T10:00:00Z"));
 
         await Assert.That(result.IntProperty).IsEqualTo(42);
         await Assert.That(result.EnumProperty).IsEqualTo(EnumExample.Two);

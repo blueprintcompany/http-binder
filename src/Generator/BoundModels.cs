@@ -39,6 +39,30 @@ internal sealed record BoundProperty(
             IsFormFile: false,
             IsIgnored: true,
             ChildProperties: []);
+
+    public string GetTryParseMethod() =>
+        TypeName switch
+        {
+            "bool" or "bool?" => "bool.TryParse",
+            "byte" or "byte?" => "byte.TryParse",
+            "sbyte" or "sbyte?" => "sbyte.TryParse",
+            "short" or "short?" => "short.TryParse",
+            "ushort" or "ushort?" => "ushort.TryParse",
+            "int" or "int?" => "int.TryParse",
+            "uint" or "uint?" => "uint.TryParse",
+            "long" or "long?" => "long.TryParse",
+            "ulong" or "ulong?" => "ulong.TryParse",
+            "float" or "float?" => "float.TryParse",
+            "double" or "double?" => "double.TryParse",
+            "decimal" or "decimal?" => "decimal.TryParse",
+            "System.Guid" or "System.Guid?" => "System.Guid.TryParse",
+            "System.DateTime" or "System.DateTime?" => "System.DateTime.TryParse",
+            "System.DateTimeOffset" or "System.DateTimeOffset?" => "System.DateTimeOffset.TryParse",
+            "System.DateOnly" or "System.DateOnly?" => "System.DateOnly.TryParse",
+            "System.TimeOnly" or "System.TimeOnly?" => "System.TimeOnly.TryParse",
+            "System.TimeSpan" or "System.TimeSpan?" => "System.TimeSpan.TryParse",
+            _ => "int.TryParse"
+        };
 }
 
 /// <summary>

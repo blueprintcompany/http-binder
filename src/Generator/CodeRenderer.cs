@@ -270,7 +270,7 @@ internal static class CodeRenderer
         }
         else
         {
-            indent.AppendLine($"if ({rawVar} != null && {GetTryParseMethod(property.TypeName)}({rawVar}, out var {parsed})) {local} = {parsed};");
+            indent.AppendLine($"if ({rawVar} != null && {property.GetTryParseMethod()}({rawVar}, out var {parsed})) {local} = {parsed};");
         }
     }
 
@@ -291,8 +291,6 @@ internal static class CodeRenderer
         string local,
         bool requiresForm)
     {
-        var elementType = property.TypeName;
-
         var keys = property.HttpBinderType switch
         {
             HttpBinderType.Query => "query.Keys",
@@ -316,13 +314,13 @@ internal static class CodeRenderer
 
         if (property.IsComplex)
         {
-            var helper = $"Bind_{Sanitize(elementType)}";
+            var helper = $"Bind_{Sanitize(property.TypeName)}";
             var formArg = requiresForm ? "form" : "null";
             indent.AppendLine($"{local}[index] = {helper}(http, key + \".\", {formArg});");
         }
         else
         {
-            EmitCollectionElementBinding(indent, local, elementType, property.HttpBinderType, "index");
+            EmitCollectionElementBinding(indent, local, property, "index");
         }
 
         indent.Unindent();
@@ -332,15 +330,14 @@ internal static class CodeRenderer
     private static void EmitCollectionElementBinding(
         IndentedStringBuilder indent,
         string local,
-        string elementType,
-        HttpBinderType source,
+        BoundProperty property,
         string indexExpr)
     {
         var raw = $"{local}ElementRaw";
 
         indent.AppendLine($"string? {raw} = null;");
 
-        switch (source)
+        switch (property.HttpBinderType)
         {
             case HttpBinderType.Query:
                 indent.AppendLine($"if (query.TryGetValue(key, out var queryValue) && queryValue.Count > 0) {raw} = queryValue.ToString();");
@@ -357,17 +354,17 @@ internal static class CodeRenderer
 
 
         var parsed = $"{local}ElementParsed";
-        if (elementType == "string")
+        if (property.IsString)
         {
             indent.AppendLine($"if ({raw} != null) {local}[{indexExpr}] = {raw};");
         }
-        else if (elementType.Contains("enum"))
+        else if (property.IsEnum)
         {
-            indent.AppendLine($"if ({raw} != null && Enum.TryParse<{elementType}>({raw}, true, out var {parsed})) {local}[{indexExpr}] = {parsed};");
+            indent.AppendLine($"if ({raw} != null && Enum.TryParse<{property.TypeName}>({raw}, true, out var {parsed})) {local}[{indexExpr}] = {parsed};");
         }
         else
         {
-            indent.AppendLine($"if ({raw} != null && {GetTryParseMethod(elementType)}({raw}, out var {parsed})) {local}[{indexExpr}] = {parsed};");
+            indent.AppendLine($"if ({raw} != null && {property.GetTryParseMethod()}({raw}, out var {parsed})) {local}[{indexExpr}] = {parsed};");
         }
     }
 
@@ -503,41 +500,15 @@ internal static class CodeRenderer
         }
         else
         {
-            EmitCollectionElementBinding(indent, local, property.TypeName, property.HttpBinderType, "index");
+            EmitCollectionElementBinding(indent, local, property, "index");
         }
 
         indent.Unindent();
         indent.AppendLine("}");
     }
 
-    private static string GetTryParseMethod(string typeName) =>
-        typeName switch
-        {
-            "bool" => "bool.TryParse",
-            "byte" => "byte.TryParse",
-            "sbyte" => "sbyte.TryParse",
-            "short" => "short.TryParse",
-            "ushort" => "ushort.TryParse",
-            "int" => "int.TryParse",
-            "uint" => "uint.TryParse",
-            "long" => "long.TryParse",
-            "ulong" => "ulong.TryParse",
-            "float" => "float.TryParse",
-            "double" => "double.TryParse",
-            "decimal" => "decimal.TryParse",
-            "System.Guid" => "System.Guid.TryParse",
-            "System.DateTime" => "System.DateTime.TryParse",
-            "System.DateTimeOffset" => "System.DateTimeOffset.TryParse",
-            "System.DateOnly" => "System.DateOnly.TryParse",
-            "System.TimeOnly" => "System.TimeOnly.TryParse",
-            "System.TimeSpan" => "System.TimeSpan.TryParse",
-            _ => "int.TryParse"
-        };
-
-
     private static string Sanitize(string fullTypeName)
     {
-        fullTypeName = fullTypeName.Replace("global::", "");
         var sb = new StringBuilder(fullTypeName.Length);
         foreach (var c in fullTypeName)
             sb.Append(char.IsLetterOrDigit(c) ? c : '_');
