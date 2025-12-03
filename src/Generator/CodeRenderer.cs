@@ -348,7 +348,7 @@ internal static class CodeRenderer
                 break;
 
             default:
-                indent.AppendLine($"if (form.TryGetValue(key, out var formValue) && fv.Count > 0) {raw} = formValue.ToString();");
+                indent.AppendLine($"if (form.TryGetValue(key, out var formValue) && formValue.Count > 0) {raw} = formValue.ToString();");
                 break;
         }
 
@@ -491,7 +491,7 @@ internal static class CodeRenderer
         indent.AppendLine("if (idxEnd < 0) continue;");
         indent.AppendLine("var idxText = key.Substring(idxStart, idxEnd - idxStart);");
         indent.AppendLine($"if (!int.TryParse(idxText, out var index)) continue;");
-        indent.AppendLine($"while ({local}.Count <= index) {local}.Add(default!);");
+        indent.AppendLine($"while ({local}.Count <= index) {local}.Add(default);");
 
         if (property.IsComplex)
         {
