@@ -30,7 +30,7 @@ jobs:
         - name: Run tests
           run: |
             dotnet restore
-            dotnet test  --project src/${{ env.project_name }}.Tests/${{ env.project_name }}.Tests.csproj
+            dotnet test --project src/${{ env.project_name }}.Tests/${{ env.project_name }}.Tests.csproj
     pack-and-publish:
         if: startsWith(github.event.release.tag_name, 'http-binder-v')
         runs-on: ubuntu-latest
