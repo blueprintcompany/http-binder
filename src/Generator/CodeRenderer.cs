@@ -358,7 +358,7 @@ internal static class CodeRenderer
     private static void RenderComplexHelper(
         IndentedStringBuilder indent,
         string typeName,
-        ImmutableArray<BoundProperty> children)
+        ImmutableArray<BoundProperty> properties)
     {
         var helper = $"Bind_{Sanitize(typeName)}";
 
@@ -369,44 +369,44 @@ internal static class CodeRenderer
         indent.AppendLine("{");
         indent.Indent();
 
-        foreach (var c in children)
+        foreach (var property in properties)
         {
-            var local = ToCamelCase(c.Name);
-            if (c.IsCollection)
+            var local = ToCamelCase(property.Name);
+            if (property.IsCollection)
             {
-                var listType = $"global::System.Collections.Generic.List<{c.TypeName}>";
+                var listType = $"global::System.Collections.Generic.List<{property.TypeName}>";
                 indent.AppendLine($"{listType} {local} = new {listType}();");
             }
-            else if (c.IsNullable || c.IsString)
+            else if (property.IsNullable || property.IsString)
             {
-                indent.AppendLine($"{c.TypeName} {local} = null;");
+                indent.AppendLine($"{property.TypeName} {local} = null;");
             }
             else
             {
-                indent.AppendLine($"{c.TypeName} {local} = default;");
+                indent.AppendLine($"{property.TypeName} {local} = default;");
             }
         }
 
         indent.AppendLine();
 
-        foreach (var c in children)
+        foreach (var property in properties)
         {
-            var local = ToCamelCase(c.Name);
+            var local = ToCamelCase(property.Name);
             var keyVar = $"{local}Key";
-            indent.AppendLine($"var {keyVar} = prefix + \"{c.KeyName}\";");
+            indent.AppendLine($"var {keyVar} = prefix + \"{property.KeyName}\";");
 
-            if (c.IsCollection)
+            if (property.IsCollection)
             {
-                EmitComplexChildCollection(indent, c, local, keyVar);
+                EmitComplexChildCollection(indent, property, local, keyVar);
             }
-            else if (c.IsComplex)
+            else if (property.IsComplex)
             {
-                var nested = $"Bind_{Sanitize(c.TypeName)}";
+                var nested = $"Bind_{Sanitize(property.TypeName)}";
                 indent.AppendLine($"{local} = {nested}(http, {keyVar} + \".\", form);");
             }
             else
             {
-                EmitComplexChildSimple(indent, c, local, keyVar);
+                EmitComplexChildSimple(indent, property, local, keyVar);
             }
 
             indent.AppendLine();
@@ -414,7 +414,7 @@ internal static class CodeRenderer
 
         indent.AppendLine($"var instance = new {typeName}();");
 
-        foreach (var c in children)
+        foreach (var c in properties)
         {
             var local = ToCamelCase(c.Name);
             indent.AppendLine($"instance.{c.Name} = {local};");

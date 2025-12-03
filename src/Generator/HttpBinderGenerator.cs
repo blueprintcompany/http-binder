@@ -17,11 +17,6 @@ namespace Blueprint.HttpBinder
     {
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
-            context.RegisterPostInitializationOutput(static postInitializationContext =>
-            {
-                postInitializationContext.AddEmbeddedAttributeDefinition();
-            });
-
             var candidateTypes = context.SyntaxProvider.ForAttributeWithMetadataName(
                 AttributeConstants.HttpBinderAttribute,
                 static (node, _) => node is TypeDeclarationSyntax,
@@ -77,9 +72,9 @@ namespace Blueprint.HttpBinder
             {
                 if (namedArgument.Key == "HttpBinderType")
                 {
-                    var tc = namedArgument.Value;
+                    var typedConstant = namedArgument.Value;
 
-                    if (tc.Value is int raw)
+                    if (typedConstant.Value is int raw)
                     {
                         classHttpBinderType = raw switch
                         {

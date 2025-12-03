@@ -3,8 +3,7 @@ using System.Collections.Immutable;
 namespace Blueprint.HttpBinder;
 
 //// <summary>
-/// Represents a single property that will be bound at runtime. This model
-/// is value-equatable and contains only primitive / string data.
+/// Represents a single property that will be bound at runtime. This model must remain equatable for Roslyn to perform incremental caching.
 /// </summary>
 internal sealed record BoundProperty(
     string Name,
@@ -41,8 +40,7 @@ internal sealed record BoundProperty(
 }
 
 /// <summary>
-/// Represents a DTO type for which a binder will be generated. This model is
-/// value-equatable and contains no Roslyn symbols.
+/// Represents a DTO type for which a binder will be generated. This model must remain equatable for Roslyn to perform incremental caching.
 /// </summary>
 internal sealed record BoundType(
     string Name,
