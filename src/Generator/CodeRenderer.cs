@@ -264,10 +264,6 @@ internal static class CodeRenderer
             // Strings always get assigned to an empty string if not present so we want to avoid assignment if null or empty.
             indent.AppendLine($"if (!string.IsNullOrEmpty({rawVar})) {local} = {rawVar};");
         }
-        else if (property.IsGuid)
-        {
-            indent.AppendLine($"if ({rawVar} != null && Guid.TryParse({rawVar}, out var {parsed})) {local} = {parsed};");
-        }
         else if (property.IsEnum)
         {
             indent.AppendLine($"if ({rawVar} != null && Enum.TryParse<{property.TypeName}>({rawVar}, true, out var {parsed})) {local} = {parsed};");
@@ -297,7 +293,6 @@ internal static class CodeRenderer
     {
         var elementType = property.TypeName;
 
-        // keys source
         var keys = property.HttpBinderType switch
         {
             HttpBinderType.Query => "query.Keys",
@@ -360,17 +355,11 @@ internal static class CodeRenderer
                 break;
         }
 
+
+        var parsed = $"{local}ElementParsed";
         if (elementType == "string")
         {
             indent.AppendLine($"if ({raw} != null) {local}[{indexExpr}] = {raw};");
-            return;
-        }
-
-        var parsed = $"{local}ElementParsed";
-
-        if (elementType == "Guid")
-        {
-            indent.AppendLine($"if ({raw} != null && Guid.TryParse({raw}, out var {parsed})) {local}[{indexExpr}] = {parsed};");
         }
         else if (elementType.Contains("enum"))
         {
@@ -536,12 +525,12 @@ internal static class CodeRenderer
             "float" => "float.TryParse",
             "double" => "double.TryParse",
             "decimal" => "decimal.TryParse",
-            "Guid" => "System.Guid.TryParse",
-            "DateTime" => "System.DateTime.TryParse",
-            "DateTimeOffset" => "System.DateTimeOffset.TryParse",
-            "DateOnly" => "System.DateOnly.TryParse",
-            "TimeOnly" => "System.TimeOnly.TryParse",
-            "TimeSpan" => "System.TimeSpan.TryParse",
+            "System.Guid" => "System.Guid.TryParse",
+            "System.DateTime" => "System.DateTime.TryParse",
+            "System.DateTimeOffset" => "System.DateTimeOffset.TryParse",
+            "System.DateOnly" => "System.DateOnly.TryParse",
+            "System.TimeOnly" => "System.TimeOnly.TryParse",
+            "System.TimeSpan" => "System.TimeSpan.TryParse",
             _ => "int.TryParse"
         };
 

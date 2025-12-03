@@ -11,7 +11,7 @@ public class AttributeDataExtensionsTests
     [Test]
     public async Task TryGetBinderType_WhenNamedArgPresent_ThenReturnsTrueAndParsesEnum()
     {
-        var code = $$"""
+        var code = """
             public enum HttpBinderType
             {
                 Form,
@@ -40,7 +40,7 @@ public class AttributeDataExtensionsTests
     [Test]
     public async Task TryGetBinderType_WhenNamedArgMissing_ThenReturnsFalse()
     {
-        var code = $$"""
+        var code = """
             public class HttpBinderAttribute : System.Attribute
             {
                 public HttpBinderType HttpBinderType { get; set; }
@@ -63,7 +63,7 @@ public class AttributeDataExtensionsTests
     [Test]
     public async Task TryGetBinderType_WhenNamedArgIsWrongType_ThenReturnsFalse()
     {
-        var code = $$"""
+        var code = """
             public enum SomethingElse { X = 123 }
 
             public class HttpBinderAttribute : System.Attribute
@@ -88,7 +88,7 @@ public class AttributeDataExtensionsTests
     [Test]
     public async Task TryGetBinderType_WhenDifferentNamedArgExists_ThenReturnsFalse()
     {
-        var code = $$"""
+        var code = """
             public enum HttpBinderType
             {
                 Form,
@@ -118,7 +118,7 @@ public class AttributeDataExtensionsTests
     [Test]
     public async Task TryGetBinderType_WhenMultipleNamedArgs_ThenStillUsesCorrectOne()
     {
-        var code = $$"""
+        var code = """
         public enum HttpBinderType
         {
             Form,
@@ -149,7 +149,7 @@ public class AttributeDataExtensionsTests
     [Test]
     public async Task TryGetBinderType_WhenAttributeMissing_ThenReturnsFalse()
     {
-        var code = $$"""
+        var code = """
             public class T {}
         """;
 

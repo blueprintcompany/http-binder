@@ -259,10 +259,10 @@ public class TypeSymbolExtensionsTests
     public async Task GetPropertyAttributes_GivenDateTime_ThenIsPrimitiveIsTrue()
     {
         var code = @"namespace A {
-        public class T {
-            public System.DateTime X { get; set; }
-        }
-    }";
+            public class T {
+                public System.DateTime X { get; set; }
+            }
+        }";
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
         var (_, _, _, isPrimitive, _, isComplex, _) = prop.Type.GetPropertyAttributes();
@@ -275,10 +275,10 @@ public class TypeSymbolExtensionsTests
     public async Task GetPropertyAttributes_GivenNullableDateTime_ThenIsNullableIsTrueAndPrimitive()
     {
         var code = @"namespace A {
-        public class T {
-            public System.DateTime? X { get; set; }
-        }
-    }";
+            public class T {
+                public System.DateTime? X { get; set; }
+            }
+        }";
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
         var (isNullable, _, _, isPrimitive, _, isComplex, _) = prop.Type.GetPropertyAttributes();
@@ -292,10 +292,10 @@ public class TypeSymbolExtensionsTests
     public async Task GetPropertyAttributes_GivenDateTimeOffset_ThenIsPrimitiveIsTrue()
     {
         var code = @"namespace A {
-        public class T {
-            public System.DateTimeOffset X { get; set; }
-        }
-    }";
+            public class T {
+                public System.DateTimeOffset X { get; set; }
+            }
+        }";
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
         var (_, _, _, isPrimitive, _, isComplex, _) = prop.Type.GetPropertyAttributes();
