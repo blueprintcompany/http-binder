@@ -19,7 +19,7 @@ internal sealed record BoundProperty(
     bool IsComplex,
     bool IsFormFile,
     bool IsIgnored,
-    ImmutableArray<BoundProperty> Children)
+    ImmutableArray<BoundProperty> ChildProperties)
 {
     public static BoundProperty Ignore(string name, HttpBinderType httpBinderType) =>
         new(
@@ -36,7 +36,7 @@ internal sealed record BoundProperty(
             IsComplex: false,
             IsFormFile: false,
             IsIgnored: true,
-            Children: []);
+            ChildProperties: []);
 }
 
 /// <summary>

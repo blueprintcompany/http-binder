@@ -93,18 +93,18 @@ internal static class CodeRenderer
         if (property.HttpBinderType == HttpBinderType.Form)
             return true;
 
-        foreach (var c in property.Children)
-            if (UsesFormRecursive(c))
+        foreach (var childProperty in property.ChildProperties)
+            if (UsesFormRecursive(childProperty))
                 return true;
 
         return false;
     }
 
     private static bool UsesQueryAtRoot(BoundType model) =>
-        model.Properties.Any(p => !p.IsComplex && p.HttpBinderType == HttpBinderType.Query);
+        model.Properties.Any(p => p.HttpBinderType == HttpBinderType.Query);
 
     private static bool UsesRouteAtRoot(BoundType model) =>
-        model.Properties.Any(p => !p.IsComplex && p.HttpBinderType == HttpBinderType.Route);
+        model.Properties.Any(p => p.HttpBinderType == HttpBinderType.Route);
 
     private static void GeneratePropertyBinding(
         IndentedStringBuilder indent,
@@ -153,7 +153,7 @@ internal static class CodeRenderer
 
         if (property.IsNullable || property.IsString)
         {
-            indent.AppendLine($"{typeName} {local} = null;");
+            indent.AppendLine($"{typeName} {local} = null!;");
             return;
         }
 
@@ -182,17 +182,17 @@ internal static class CodeRenderer
         {
             case HttpBinderType.Query:
                 indent.AppendLine(
-                    $"var {rawVar} = query.TryGetValue(\"{key}\", out var tmpQuery_{local}) && tmpQuery_{local}.Count > 0 ? tmpQuery_{local}.ToString() : null;");
+                    $"var {rawVar} = query.TryGetValue(\"{key}\", out var {local}QueryValue) && {local}QueryValue.Count > 0 ? {local}QueryValue.ToString() : null;");
                 break;
 
             case HttpBinderType.Route:
                 indent.AppendLine(
-                    $"var {rawVar} = route.TryGetValue(\"{key}\", out var tmpRoute_{local}) ? tmpRoute_{local}?.ToString() : null;");
+                    $"var {rawVar} = route.TryGetValue(\"{key}\", out var {local}RouteValue) ? {local}RouteValue?.ToString() : null;");
                 break;
 
             default:
                 indent.AppendLine(
-                    $"var {rawVar} = form.TryGetValue(\"{key}\", out var tmpForm_{local}) && tmpForm_{local}.Count > 0 ? tmpForm_{local}.ToString() : null;");
+                    $"var {rawVar} = form.TryGetValue(\"{key}\", out var {local}FormValue) && {local}FormValue.Count > 0 ? {local}Value.ToString() : null;");
                 break;
         }
     }
@@ -300,15 +300,15 @@ internal static class CodeRenderer
         switch (source)
         {
             case HttpBinderType.Query:
-                indent.AppendLine($"if (query.TryGetValue(key, out var qv) && qv.Count > 0) {raw} = qv.ToString();");
+                indent.AppendLine($"if (query.TryGetValue(key, out var queryValue) && queryValue.Count > 0) {raw} = queryValue.ToString();");
                 break;
 
             case HttpBinderType.Route:
-                indent.AppendLine($"if (route.TryGetValue(key, out var rv)) {raw} = rv?.ToString();");
+                indent.AppendLine($"if (route.TryGetValue(key, out var routeValue)) {raw} = routeValue?.ToString();");
                 break;
 
             default:
-                indent.AppendLine($"if (form.TryGetValue(key, out var fv) && fv.Count > 0) {raw} = fv.ToString();");
+                indent.AppendLine($"if (form.TryGetValue(key, out var formValue) && fv.Count > 0) {raw} = formValue.ToString();");
                 break;
         }
 
@@ -345,12 +345,12 @@ internal static class CodeRenderer
         void Walk(BoundProperty p)
         {
             if (p.IsComplex && !p.IsCollection && emitted.Add(p.TypeName))
-                RenderComplexHelper(indent, p.TypeName, p.Children);
+                RenderComplexHelper(indent, p.TypeName, p.ChildProperties);
 
             if (p.IsComplex && p.IsCollection && emitted.Add(p.TypeName))
-                RenderComplexHelper(indent, p.TypeName, p.Children);
+                RenderComplexHelper(indent, p.TypeName, p.ChildProperties);
 
-            foreach (var c in p.Children)
+            foreach (var c in p.ChildProperties)
                 Walk(c);
         }
     }

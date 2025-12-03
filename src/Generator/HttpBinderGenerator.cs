@@ -215,7 +215,7 @@ namespace Blueprint.HttpBinder
                 IsComplex: isComplex,
                 IsFormFile: isFormFile,
                 IsIgnored: false,
-                Children: children);
+                ChildProperties: children);
         }
     }
 }

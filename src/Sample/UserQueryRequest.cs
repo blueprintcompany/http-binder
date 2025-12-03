@@ -7,8 +7,16 @@ public partial class UserQueryRequest : PagedRequestBase
 {
     public string? Search { get; set; }
 
-    [BindFrom(HttpBinderType.Form)]
-    public ComplexTypeTwo ComplexTypeTwo { get; set; } = new();
+    public string SearchTwo { get; set; } = null!;
+
+    public int PageNumber { get; set; }
+
+    public Guid Id { get; set; }
+
+    //public IFormFile FormFile { get; set; } = null!;
+
+    //[BindFrom(HttpBinderType.Form)]
+    //public ComplexTypeTwo ComplexTypeTwo { get; set; } = new();
 }
 
 public class ComplexTypeTwo
