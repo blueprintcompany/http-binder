@@ -70,7 +70,7 @@ internal static class TypeSymbolExtensions
                 SpecialType.System_Char or
                 SpecialType.System_String;
 
-            var isFormFile = typeSymbol.IsSingleFormFile() || typeSymbol.IsFormFileCollection();
+            var isFormFile = typeSymbol.IsSingleFormFile() || typeSymbol.IsListOfFormFiles();
 
             var isComplex = !(isPrimitive || isString || isGuid || isEnum);
 
@@ -105,13 +105,16 @@ internal static class TypeSymbolExtensions
             return null;
         }
 
-        public bool IsSingleFormFile() =>
-            typeSymbol.ToDisplayString() is "Microsoft.AspNetCore.Http.IFormFile";
-
         public bool IsFormFileCollection()
+            => typeSymbol.ToDisplayString() == "Microsoft.AspNetCore.Http.IFormFileCollection";
+
+        public bool IsSingleFormFile()
+            => typeSymbol.ToDisplayString() is "Microsoft.AspNetCore.Http.IFormFile";
+
+        public bool IsListOfFormFiles()
         {
             // IFormFileCollection
-            if (typeSymbol.ToDisplayString() == "Microsoft.AspNetCore.Http.IFormFileCollection")
+            if (IsFormFileCollection(typeSymbol))
                 return true;
 
             // Array: IFormFile[]

@@ -333,7 +333,7 @@ public class TypeSymbolExtensionsTests
         """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "T").GetMembers("Files")[0];
-        var result = prop.Type.IsFormFileCollection();
+        var result = prop.Type.IsListOfFormFiles();
 
         await Assert.That(result).IsTrue();
     }
@@ -351,7 +351,7 @@ public class TypeSymbolExtensionsTests
         """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "T").GetMembers("Files")[0];
-        var result = prop.Type.IsFormFileCollection();
+        var result = prop.Type.IsListOfFormFiles();
 
         await Assert.That(result).IsTrue();
     }
@@ -369,7 +369,7 @@ public class TypeSymbolExtensionsTests
         """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "T").GetMembers("Files")[0];
-        var result = prop.Type.IsFormFileCollection();
+        var result = prop.Type.IsListOfFormFiles();
 
         await Assert.That(result).IsTrue();
     }
@@ -387,7 +387,7 @@ public class TypeSymbolExtensionsTests
         """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "T").GetMembers("Files")[0];
-        var result = prop.Type.IsFormFileCollection();
+        var result = prop.Type.IsListOfFormFiles();
 
         await Assert.That(result).IsTrue();
     }

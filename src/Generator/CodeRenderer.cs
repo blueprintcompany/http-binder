@@ -146,7 +146,7 @@ internal static class CodeRenderer
     {
         if (property.IsFormFile && property.IsCollection)
         {
-            indent.AppendLine($"{property.DeclaredTypeName} {local} = null;");
+            indent.AppendLine($"{property.DeclaredTypeName} {local} = null!;");
             return;
         }
 
@@ -187,7 +187,10 @@ internal static class CodeRenderer
         if (property.DeclaredTypeName == "Microsoft.AspNetCore.Http.IFormFileCollection")
         {
             indent.AppendLine(
-                $"{local} = http.Request.Form.Files.GetFiles(\"{key}\");");
+                $"var {local}FileList = http.Request.Form.Files.GetFiles(\"{key}\");");
+            indent.AppendLine($"var {local}FileCollection = new FormFileCollection();");
+            indent.AppendLine($"foreach (var file in {local}FileList) {local}FileCollection.Add(file);");
+            indent.AppendLine($"{local} = {local}FileCollection;");
             return;
         }
 
@@ -200,8 +203,7 @@ internal static class CodeRenderer
         }
 
         // Scalar IFormFile
-        indent.AppendLine(
-            $"{local} = http.Request.Form.Files.GetFile(\"{key}\");");
+        indent.AppendLine($"{local} = http.Request.Form.Files.GetFile(\"{key}\");");
     }
 
     private static void EmitSimpleBinding(
