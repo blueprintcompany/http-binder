@@ -100,6 +100,12 @@ namespace Blueprint.HttpBinder
             }
 
             var @namespace = typeSymbol.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+            var isSingleFileProgram = @namespace == "<global namespace>";
+            if (isSingleFileProgram)
+            {
+                @namespace = string.Empty;
+            }
+
             var name = typeSymbol.Name;
             var fullName = typeSymbol.GetFullTypeName();
 

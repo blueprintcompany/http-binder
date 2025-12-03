@@ -109,7 +109,7 @@ internal static class TypeSymbolExtensions
             => typeSymbol.ToDisplayString() == "Microsoft.AspNetCore.Http.IFormFileCollection";
 
         public bool IsSingleFormFile()
-            => typeSymbol.ToDisplayString() is "Microsoft.AspNetCore.Http.IFormFile";
+            => typeSymbol.ToDisplayString() is "Microsoft.AspNetCore.Http.IFormFile?" or "Microsoft.AspNetCore.Http.IFormFile";
 
         public bool IsListOfFormFiles()
         {

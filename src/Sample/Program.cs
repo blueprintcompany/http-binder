@@ -1,3 +1,4 @@
+using Blueprint.HttpBinder;
 using Sample;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,3 +19,22 @@ app.MapPost("/users", async (UserQueryRequest req, HttpContext httpContext) =>
 });
 
 app.Run();
+
+[HttpBinder(HttpBinderType = HttpBinderType.Form)]
+public partial class UserQueryRequest : PagedRequestBase
+{
+    public IFormFile? FormFile { get; set; } = null!;
+    public IFormFileCollection FormFiles { get; set; } = null!;
+    public List<IFormFile> FormFileList { get; set; } = [];
+    public int IntProperty { get; set; }
+    [BindFrom(HttpBinderType.Query)]
+    public Guid GuidProperty { get; set; }
+    public EnumExample EnumProperty { get; set; }
+}
+
+public enum EnumExample
+{
+    One,
+    Two,
+    Three
+}
