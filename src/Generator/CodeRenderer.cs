@@ -165,7 +165,7 @@ internal static class CodeRenderer
         BoundProperty property,
         string local)
     {
-        var rawVar = $"{local}_raw";
+        var rawVar = $"{local}Raw";
         EmitValueAccessor(indent, property, rawVar);
         EmitValueParser(indent, property, local, rawVar);
     }
@@ -203,7 +203,7 @@ internal static class CodeRenderer
         string local,
         string rawVar)
     {
-        var parsed = $"parsed_{local}";
+        var parsed = $"{local}Parsed";
 
         if (property.IsString)
         {
@@ -271,15 +271,15 @@ internal static class CodeRenderer
         indent.AppendLine($"if (!int.TryParse(idxText, out var index)) continue;");
         indent.AppendLine($"while ({local}.Count <= index) {local}.Add(default!);");
 
-        if (IsSimpleType(elementType))
-        {
-            EmitCollectionElementBinding(indent, local, elementType, property.HttpBinderType, "index");
-        }
-        else
+        if (property.IsComplex)
         {
             var helper = $"Bind_{Sanitize(elementType)}";
             var formArg = requiresForm ? "form" : "null";
             indent.AppendLine($"{local}[index] = {helper}(http, key + \".\", {formArg});");
+        }
+        else
+        {
+            EmitCollectionElementBinding(indent, local, elementType, property.HttpBinderType, "index");
         }
 
         indent.Unindent();
@@ -293,7 +293,7 @@ internal static class CodeRenderer
         HttpBinderType source,
         string indexExpr)
     {
-        var raw = $"{local}_elem_raw";
+        var raw = $"{local}ElementRaw";
 
         indent.AppendLine($"string? {raw} = null;");
 
@@ -318,7 +318,7 @@ internal static class CodeRenderer
             return;
         }
 
-        var parsed = $"{local}_elem_parsed";
+        var parsed = $"{local}ElementParsed";
 
         if (elementType == "global::System.Guid")
         {
@@ -347,7 +347,7 @@ internal static class CodeRenderer
             if (p.IsComplex && !p.IsCollection && emitted.Add(p.TypeName))
                 RenderComplexHelper(indent, p.TypeName, p.Children);
 
-            if (p.IsCollection && !IsSimpleType(p.TypeName) && emitted.Add(p.TypeName))
+            if (p.IsComplex && p.IsCollection && emitted.Add(p.TypeName))
                 RenderComplexHelper(indent, p.TypeName, p.Children);
 
             foreach (var c in p.Children)
@@ -379,7 +379,7 @@ internal static class CodeRenderer
             }
             else if (c.IsNullable || c.IsString)
             {
-                indent.AppendLine($"{c.TypeName}? {local} = null;");
+                indent.AppendLine($"{c.TypeName} {local} = null;");
             }
             else
             {
@@ -431,14 +431,14 @@ internal static class CodeRenderer
         string local,
         string keyVar)
     {
-        var raw = $"{local}_raw";
-        indent.AppendLine($"var {raw} = form != null && form.TryGetValue({keyVar}, out var tmp_{local}) && tmp_{local}.Count > 0 ? tmp_{local}.ToString() : null;");
+        var raw = $"{local}Raw";
+        indent.AppendLine($"var {raw} = form != null && form.TryGetValue({keyVar}, out var temp{local}) && temp{local}.Count > 0 ? temp{local}.ToString() : null;");
         EmitValueParser(indent, c, local, raw);
     }
 
     private static void EmitComplexChildCollection(
         IndentedStringBuilder indent,
-        BoundProperty c,
+        BoundProperty property,
         string local,
         string keyVar)
     {
@@ -457,31 +457,19 @@ internal static class CodeRenderer
         indent.AppendLine($"if (!int.TryParse(idxText, out var index)) continue;");
         indent.AppendLine($"while ({local}.Count <= index) {local}.Add(default!);");
 
-        if (!IsSimpleType(c.TypeName))
+        if (property.IsComplex)
         {
-            var nested = $"Bind_{Sanitize(c.TypeName)}";
+            var nested = $"Bind_{Sanitize(property.TypeName)}";
             indent.AppendLine($"{local}[index] = {nested}(http, key + \".\", form);");
         }
         else
         {
-            EmitCollectionElementBinding(indent, local, c.TypeName, c.HttpBinderType, "index");
+            EmitCollectionElementBinding(indent, local, property.TypeName, property.HttpBinderType, "index");
         }
 
         indent.Unindent();
         indent.AppendLine("}");
     }
-
-    private static bool IsSimpleType(string type) =>
-        type == "string" ||
-        type == "global::System.String" ||
-        type == "global::System.Guid" ||
-        type.Contains("enum") ||
-        type.StartsWith("global::System.Boolean") ||
-        type.StartsWith("global::System.Int") ||
-        type.StartsWith("global::System.UInt") ||
-        type.StartsWith("global::System.Single") ||
-        type.StartsWith("global::System.Double") ||
-        type.StartsWith("global::System.Decimal");
 
     private static string GetTryParseMethod(string typeName) =>
         typeName switch
