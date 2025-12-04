@@ -86,7 +86,7 @@ internal static class CodeRenderer
             indent.AppendLine();
         }
 
-        var args = string.Join(", ", model.ConstructorParameterNames.Select(name => $"{name}: {ToCamelCase(name)}"));
+        var args = string.Join(", ", model.ConstructorParameterNames.Select(name => $"{name}: {BoundProperty.ToCamelCase(name)}"));
         indent.AppendLine($"var instance = new {typeName}({args});");
 
         foreach (var p in model.Properties)
@@ -94,7 +94,7 @@ internal static class CodeRenderer
             if (p.IsIgnored
                 || (model.HasPrimaryConstructor && model.ConstructorParameterNames.Contains(p.Name))) continue;
 
-            var local = ToCamelCase(p.Name);
+            var local = p.CamelCaseName;
 
             if (p.IsCollection && !p.IsFormFile)
             {
@@ -141,7 +141,7 @@ internal static class CodeRenderer
         BoundProperty property)
     {
         var name = property.Name;
-        var local = ToCamelCase(name);
+        var local = property.CamelCaseName;
         var elementType = property.TypeName;
 
         EmitLocalDeclaration(indent, property, local, elementType);
@@ -227,7 +227,7 @@ internal static class CodeRenderer
 
     private static void EmitFormFileBinding(IndentedStringBuilder indent, BoundProperty property)
     {
-        var local = ToCamelCase(property.Name);
+        var local = property.CamelCaseName;
         var key = property.KeyName;
 
         // user declared "IFormFileCollection"
@@ -269,7 +269,7 @@ internal static class CodeRenderer
         string rawVar)
     {
         var key = property.KeyName;
-        var local = ToCamelCase(property.Name);
+        var local = property.CamelCaseName;
 
         switch (property.HttpBinderType)
         {
@@ -407,7 +407,7 @@ internal static class CodeRenderer
         // Locals
         foreach (var property in properties)
         {
-            var local = ToCamelCase(property.Name);
+            var local = property.CamelCaseName;
 
             if (property.IsCollection && !property.IsFormFile)
             {
@@ -429,7 +429,7 @@ internal static class CodeRenderer
         // Binding logic for each child property (form-only)
         foreach (var property in properties)
         {
-            var local = ToCamelCase(property.Name);
+            var local = property.CamelCaseName;
             var keyVar = $"{local}Key";
             indent.AppendLine($"var {keyVar} = prefix + \"{property.KeyName}\";");
 
@@ -457,18 +457,18 @@ internal static class CodeRenderer
 
         indent.AppendLine($"var instance = new {typeName}();");
 
-        foreach (var c in properties)
+        foreach (var property in properties)
         {
-            var local = ToCamelCase(c.Name);
+            var local = property.CamelCaseName;
 
-            if (c.IsCollection && !c.IsFormFile)
+            if (property.IsCollection && !property.IsFormFile)
             {
-                var assignmentExpr = GetCollectionAssignmentExpression(c, local);
-                indent.AppendLine($"instance.{c.Name} = {assignmentExpr};");
+                var assignmentExpr = GetCollectionAssignmentExpression(property, local);
+                indent.AppendLine($"instance.{property.Name} = {assignmentExpr};");
             }
             else
             {
-                indent.AppendLine($"instance.{c.Name} = {local};");
+                indent.AppendLine($"instance.{property.Name} = {local};");
             }
         }
 
@@ -575,9 +575,4 @@ internal static class CodeRenderer
             sb.Append(char.IsLetterOrDigit(c) ? c : '_');
         return sb.ToString();
     }
-
-    private static string ToCamelCase(string name) =>
-        string.IsNullOrEmpty(name)
-            ? name
-            : char.ToLowerInvariant(name[0]) + name.Substring(1);
 }

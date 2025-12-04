@@ -28,6 +28,7 @@ internal sealed record BoundProperty(
             IsIgnored: true,
             ChildProperties: []);
 
+    public string CamelCaseName => ToCamelCase(Name);
     public string NonNullTypeName => IsNullable ? TypeName.TrimEnd('?') : TypeName;
     public string TypeName => ScalarType.TypeName;
     public bool IsEnum => ScalarType.IsEnum;
@@ -37,6 +38,8 @@ internal sealed record BoundProperty(
     public bool IsFormFile => ScalarType.IsFormFile;
     public bool IsValueType => ScalarType.IsValueType;
     public bool IsReferenceType => ScalarType.IsReferenceType;
+
+    public static string ToCamelCase(string str) => char.ToLowerInvariant(str[0]) + str.Substring(1);
 
     public string GetTryParseMethod() =>
         NonNullTypeName switch
