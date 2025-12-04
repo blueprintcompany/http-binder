@@ -207,7 +207,7 @@ public class TypeSymbolExtensionsTests
     }
 
     [Test]
-    public async Task GetScalarTypeInfo_GivenCustomClass_ThenIsComplexIsTrue()
+    public async Task GetScalarTypeInfo_GivenCustomClass_ThenIsReferenceTypeIsTrue()
     {
         var code = @"namespace A { 
             public class C {} 
@@ -220,7 +220,7 @@ public class TypeSymbolExtensionsTests
 
         var scalarTypeInfo = prop.Type.GetScalarTypeInfo();
 
-        await Assert.That(scalarTypeInfo.IsComplex).IsTrue();
+        await Assert.That(scalarTypeInfo.IsReferenceType).IsTrue();
     }
 
     [Test]
@@ -268,7 +268,7 @@ public class TypeSymbolExtensionsTests
         var scalarTypeInfo = prop.Type.GetScalarTypeInfo();
 
         await Assert.That(scalarTypeInfo.IsPrimitive).IsTrue();
-        await Assert.That(scalarTypeInfo.IsComplex).IsFalse();
+        await Assert.That(scalarTypeInfo.IsReferenceType).IsFalse();
     }
 
     [Test]
@@ -285,7 +285,7 @@ public class TypeSymbolExtensionsTests
 
         await Assert.That(scalarTypeInfo.IsNullable).IsTrue();
         await Assert.That(scalarTypeInfo.IsPrimitive).IsTrue();
-        await Assert.That(scalarTypeInfo.IsComplex).IsFalse();
+        await Assert.That(scalarTypeInfo.IsReferenceType).IsFalse();
     }
 
     [Test]
@@ -301,7 +301,7 @@ public class TypeSymbolExtensionsTests
         var scalarTypeInfo = prop.Type.GetScalarTypeInfo();
 
         await Assert.That(scalarTypeInfo.IsPrimitive).IsTrue();
-        await Assert.That(scalarTypeInfo.IsComplex).IsFalse();
+        await Assert.That(scalarTypeInfo.IsReferenceType).IsFalse();
     }
 
     [Test]
@@ -318,7 +318,7 @@ public class TypeSymbolExtensionsTests
 
         await Assert.That(scalarTypeInfo.IsNullable).IsTrue();
         await Assert.That(scalarTypeInfo.IsPrimitive).IsTrue();
-        await Assert.That(scalarTypeInfo.IsComplex).IsFalse();
+        await Assert.That(scalarTypeInfo.IsReferenceType).IsFalse();
     }
 
     [Test]
@@ -367,7 +367,7 @@ public class TypeSymbolExtensionsTests
     }
 
     [Test]
-    public async Task GetScalarTypeInfo_GivenIntArray_ThenIsCollectionPrimitiveNotComplex()
+    public async Task GetScalarTypeInfo_GivenIntArray_ThenIsCollectionPrimitiveNotReferenceType()
     {
         var code = """
             namespace A {
@@ -385,11 +385,11 @@ public class TypeSymbolExtensionsTests
 
         await Assert.That(isCollection).IsTrue();
         await Assert.That(scalar.IsPrimitive).IsTrue();
-        await Assert.That(scalar.IsComplex).IsFalse();
+        await Assert.That(scalar.IsReferenceType).IsFalse();
     }
 
     [Test]
-    public async Task GetScalarTypeInfo_GivenListInt_ThenIsCollectionPrimitiveNotComplex()
+    public async Task GetScalarTypeInfo_GivenListInt_ThenIsCollectionPrimitiveNotReferenceType()
     {
         var code = """
         using System.Collections.Generic;
@@ -406,11 +406,11 @@ public class TypeSymbolExtensionsTests
         var scalar = elementType.GetScalarTypeInfo();
 
         await Assert.That(scalar.IsPrimitive).IsTrue();
-        await Assert.That(scalar.IsComplex).IsFalse();
+        await Assert.That(scalar.IsReferenceType).IsFalse();
     }
 
     [Test]
-    public async Task GetScalarTypeInfo_GivenIEnumerableInt_ThenIsCollectionPrimitiveNotComplex()
+    public async Task GetScalarTypeInfo_GivenIEnumerableInt_ThenIsCollectionPrimitiveNotReferenceType()
     {
         var code = """
             using System.Collections.Generic;
@@ -426,7 +426,7 @@ public class TypeSymbolExtensionsTests
         var scalar = elementType.GetScalarTypeInfo();
 
         await Assert.That(scalar.IsPrimitive).IsTrue();
-        await Assert.That(scalar.IsComplex).IsFalse();
+        await Assert.That(scalar.IsReferenceType).IsFalse();
     }
 
     [Test]
@@ -447,11 +447,11 @@ public class TypeSymbolExtensionsTests
 
         await Assert.That(scalar.IsNullable).IsTrue();
         await Assert.That(scalar.IsPrimitive).IsTrue();
-        await Assert.That(scalar.IsComplex).IsFalse();
+        await Assert.That(scalar.IsReferenceType).IsFalse();
     }
 
     [Test]
-    public async Task GetScalarTypeInfo_GivenListGuid_ThenIsGuidNotComplex()
+    public async Task GetScalarTypeInfo_GivenListGuid_ThenIsGuidNotReferenceType()
     {
         var code = """
         using System;
@@ -469,11 +469,11 @@ public class TypeSymbolExtensionsTests
         var scalar = elementType.GetScalarTypeInfo();
 
         await Assert.That(scalar.IsGuid).IsTrue();
-        await Assert.That(scalar.IsComplex).IsFalse();
+        await Assert.That(scalar.IsReferenceType).IsFalse();
     }
 
     [Test]
-    public async Task GetScalarTypeInfo_GivenListOfComplexType_ThenIsComplexIsTrue()
+    public async Task GetScalarTypeInfo_GivenListOfReferenceTypeType_ThenIsReferenceTypeIsTrue()
     {
         var code = """
         namespace A {
@@ -489,11 +489,11 @@ public class TypeSymbolExtensionsTests
         var elementType = prop.Type.FindCollectionType()!;
         var scalar = elementType.GetScalarTypeInfo();
 
-        await Assert.That(scalar.IsComplex).IsTrue();
+        await Assert.That(scalar.IsReferenceType).IsTrue();
     }
 
     [Test]
-    public async Task GetScalarTypeInfo_GivenComplexScalar_ThenIsComplexIsTrue()
+    public async Task GetScalarTypeInfo_GivenReferenceTypeScalar_ThenIsReferenceTypeIsTrue()
     {
         var code = """
         namespace A {
@@ -507,11 +507,11 @@ public class TypeSymbolExtensionsTests
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
         var scalar = prop.Type.GetScalarTypeInfo();
 
-        await Assert.That(scalar.IsComplex).IsTrue();
+        await Assert.That(scalar.IsReferenceType).IsTrue();
     }
 
     [Test]
-    public async Task GetScalarTypeInfo_GivenComplexArray_ThenIsComplexIsTrue()
+    public async Task GetScalarTypeInfo_GivenReferenceTypeArray_ThenIsReferenceTypeIsTrue()
     {
         var code = """
         namespace A {
@@ -526,7 +526,7 @@ public class TypeSymbolExtensionsTests
         var elementType = prop.Type.FindCollectionType()!;
         var scalar = elementType.GetScalarTypeInfo();
 
-        await Assert.That(scalar.IsComplex).IsTrue();
+        await Assert.That(scalar.IsReferenceType).IsTrue();
     }
 
     [Test]

@@ -70,7 +70,7 @@ internal static class TypeSymbolExtensions
                 IsPrimitive: isPrimitive,
                 IsString: isString,
                 IsFormFile: isFormFile,
-                TypeName: underlyingTypeName);
+                TypeName: typeSymbol.ToDisplayString());
 
             static ITypeSymbol UnwrapNullable(ITypeSymbol type)
             {

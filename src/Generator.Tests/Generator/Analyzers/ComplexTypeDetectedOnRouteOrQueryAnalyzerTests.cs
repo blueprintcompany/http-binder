@@ -42,6 +42,36 @@ internal class ComplexTypeDetectedOnRouteOrQueryBinderAnalyzerTests : CSharpAnal
     }
 
     [Test]
+    public async Task GivenAQueryClass_WhenAListOfPrimitivesIsPresent_ThenDoesNotShowsDiagnostic()
+    {
+        var code = TestHelpers.GetTestCode("""
+            [HttpBinder(HttpBinderType = HttpBinderType.Query)]
+            public partial class UserQueryRequest
+            {
+                public List<int> Ints { get; set; } = [];
+            }
+            """);
+
+        await VerifyAnalyzerAsync(code);
+    }
+
+    [Test]
+    public async Task GivenAQueryClass_WhenAListOfComplexTypesIsPresent_ThenShowsDiagnostic()
+    {
+        var code = TestHelpers.GetTestCode("""
+            [HttpBinder(HttpBinderType = HttpBinderType.Query)]
+            public partial class UserQueryRequest
+            {
+                public List<ComplexType> {|HB001:ComplexType|} { get; set; } = [];
+            }
+
+            public class ComplexType {}
+            """);
+
+        await VerifyAnalyzerAsync(code);
+    }
+
+    [Test]
     public async Task GivenAFormClass_WhenAComplexObjectIsPresent_ThenDoesNotShowDiagnostic()
     {
         var code = TestHelpers.GetTestCode("""

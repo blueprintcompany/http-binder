@@ -33,7 +33,9 @@ app.MapPost("/users", async (UserQueryRequest req, HttpContext httpContext) =>
         NullableDateTimeOffset = req.NullableDateTimeOffset,
         DateTime = req.DateTime,
         DateTimeOffset = req.DateTimeOffset,
+        StringCollection = req.StringCollection,
 
+        IntCollection = req.IntCollection,
         Search = req.Search,
         Page = req.Page,
         PageSize = req.PageSize,
@@ -65,6 +67,7 @@ public partial class UserQueryRequest : PagedRequestBase
     public string? Search { get; set; }
     [BindFrom(HttpBinderType.Query)]
     public int[] IntCollection { get; set; } = [];
+    public List<string> StringCollection { get; set; } = [];
     public NestedClass NestedClasses { get; set; } = new();
 
     public partial class NestedClass
@@ -95,9 +98,12 @@ public class UserQueryResponse
     public string? Search { get; set; }
     public int Page { get; set; }
     public int PageSize { get; set; }
+    public int[] IntCollection { get; set; } = [];
+    public List<string> StringCollection { get; set; } = [];
 
     public string? NestedClassNestedProperty { get; set; }
     public int NestedClassOtherProperty { get; set; }
+
 }
 
 

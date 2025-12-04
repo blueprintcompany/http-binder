@@ -4,7 +4,6 @@ using Sample.Enums;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
-using TUnit.Assertions.Extensions;
 
 namespace Generator.Tests.Sample;
 
@@ -27,7 +26,8 @@ internal class UserQueryRequestIntegrationTests
     {
         // Arrange query params
         var url = "/users?some_guid=11111111-1111-1111-1111-111111111111"
-                + "&Page=2&PageSize=50&Search=abc";
+                + "&Page=2&PageSize=50&Search=abc"
+                + "&IntCollection=10&IntCollection=20&IntCollection=30";
 
         // multipart/form-data body
         var form = new MultipartFormDataContent
@@ -73,6 +73,8 @@ internal class UserQueryRequestIntegrationTests
             { new StringContent("2024-01-02T15:30:00Z"), "NullableDateTimeOffset" },
             { new StringContent("2024-03-01T00:00:00Z"), "DateTime" },
             { new StringContent("2024-03-02T10:00:00Z"), "DateTimeOffset" },
+            { new StringContent("hello"), "StringCollection" },
+            { new StringContent("world"), "StringCollection" },
             { new StringContent(""), "NestedClasses.NestedProperty" },
             { new StringContent("123"), "NestedClasses.OtherProperty" },
         };
@@ -118,5 +120,8 @@ internal class UserQueryRequestIntegrationTests
 
         await Assert.That(result.NestedClassNestedProperty).IsNull();
         await Assert.That(result.NestedClassOtherProperty).IsEqualTo(123);
+
+        await Assert.That(result.StringCollection).IsEquivalentTo(["hello", "world"]);
+        await Assert.That(result.IntCollection).IsEquivalentTo([10, 20, 30]);
     }
 }

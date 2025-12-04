@@ -252,7 +252,7 @@ internal static class CodeRenderer
     {
         var rawVar = $"{local}Raw";
         EmitValueAccessor(indent, property, rawVar);
-        EmitValueParser(indent, property, local, rawVar);
+        EmitValueParser(indent, property, local, rawVar, false);
     }
 
     private static void EmitValueAccessor(
@@ -285,23 +285,33 @@ internal static class CodeRenderer
     private static void EmitValueParser(
         IndentedStringBuilder indent,
         BoundProperty property,
-        string local,
-        string rawVar)
+        string assignmentTarget,
+        string rawVar,
+        bool useAdd)
     {
-        var parsed = $"{local}Parsed";
+        var parsed = $"{assignmentTarget.Replace(".", "")}Parsed";
+
+        string assign =
+            useAdd
+            ? $"{assignmentTarget}.Add("      // e.g. myList.Add(
+            : $"{assignmentTarget} = ";   // e.g. age =
+
+        // End paren for collection adds
+        string closing = useAdd ? ");" : ";";
 
         if (property.IsString)
         {
-            // Strings always get assigned to an empty string if not present so we want to avoid assignment if null or empty.
-            indent.AppendLine($"if (!string.IsNullOrEmpty({rawVar})) {local} = {rawVar};");
+            indent.AppendLine($"if (!string.IsNullOrEmpty({rawVar})) {assign}{rawVar}{closing}");
         }
         else if (property.IsEnum)
         {
-            indent.AppendLine($"if ({rawVar} != null && Enum.TryParse<{property.TypeName}>({rawVar}, true, out var {parsed})) {local} = {parsed};");
+            indent.AppendLine(
+                $"if ({rawVar} != null && Enum.TryParse<{property.TypeName}>({rawVar}, true, out var {parsed})) {assign}{parsed}{closing}");
         }
         else
         {
-            indent.AppendLine($"if ({rawVar} != null && {property.GetTryParseMethod()}({rawVar}, out var {parsed})) {local} = {parsed};");
+            indent.AppendLine(
+                $"if ({rawVar} != null && {property.GetTryParseMethod()}({rawVar}, out var {parsed})) {assign}{parsed}{closing}");
         }
     }
 
@@ -316,94 +326,40 @@ internal static class CodeRenderer
     }
 
     private static void GenerateCollectionBinding(
-        IndentedStringBuilder indent,
-        BoundProperty property,
-        string local)
+      IndentedStringBuilder indent,
+      BoundProperty property,
+      string local)
     {
-        // Route: collections are not supported
         if (property.HttpBinderType == HttpBinderType.Route)
         {
-            indent.AppendLine($"// Collections cannot be bound from route values. '{property.Name}' will remain empty.");
+            indent.AppendLine($"// Collections cannot be bound from route values.");
             return;
         }
 
-        // Query: only primitive/enum/string collections are allowed
-        if (property.HttpBinderType == HttpBinderType.Query && property.IsReferenceType)
+        var keyName = property.KeyName;
+
+        if (property.HttpBinderType == HttpBinderType.Query)
         {
-            indent.AppendLine($"// Complex collections cannot be bound from query string. '{property.Name}' will remain empty.");
-            return;
+            indent.AppendLine($"if (query.TryGetValue(\"{keyName}\", out var {keyName}Values))");
+        }
+        else
+        {
+            indent.AppendLine($"if (form.TryGetValue(\"{keyName}\", out var {keyName}Values))");
         }
 
-        // Form: complex collections ARE allowed, everything routes through form
-        var keysSource = property.HttpBinderType switch
-        {
-            HttpBinderType.Query => "query.Keys",
-            _ => "form.Keys"
-        };
-
-        indent.AppendLine($"var {local}Prefix = \"{property.KeyName}[\";");
-
-        indent.AppendLine($"foreach (var key in {keysSource})");
+        var rawVar = "val";
+        indent.AppendLine("{");
+        indent.Indent();
+        indent.AppendLine($"foreach (var {rawVar} in {keyName}Values)");
         indent.AppendLine("{");
         indent.Indent();
 
-        indent.AppendLine($"if (!key.StartsWith({local}Prefix)) continue;");
-        indent.AppendLine($"var idxStart = {local}Prefix.Length;");
-        indent.AppendLine("var idxEnd = key.IndexOf(']', idxStart);");
-        indent.AppendLine("if (idxEnd < 0) continue;");
-        indent.AppendLine("var idxText = key.Substring(idxStart, idxEnd - idxStart);");
-        indent.AppendLine("if (!int.TryParse(idxText, out var index)) continue;");
-        indent.AppendLine($"while ({local}.Count <= index) {local}.Add(default);");
-
-        if (property.IsReferenceType && property.HttpBinderType == HttpBinderType.Form)
-        {
-            // Complex collections only from form
-            var helper = $"Bind_{Sanitize(property.TypeName)}";
-            indent.AppendLine($"{local}[index] = {helper}(http, key + \".\", form);");
-        }
-        else
-        {
-            // Primitive / enum / string collections
-            EmitCollectionElementBinding(indent, local, property, "index");
-        }
+        EmitValueParser(indent, property, local, rawVar, true);
 
         indent.Unindent();
         indent.AppendLine("}");
-    }
-
-    private static void EmitCollectionElementBinding(
-        IndentedStringBuilder indent,
-        string local,
-        BoundProperty property,
-        string indexExpr)
-    {
-        var raw = $"{local}ElementRaw";
-
-        indent.AppendLine($"string? {raw} = null;");
-
-        switch (property.HttpBinderType)
-        {
-            case HttpBinderType.Query:
-                indent.AppendLine($"if (query.TryGetValue(key, out var queryValue) && queryValue.Count > 0) {raw} = queryValue.ToString();");
-                break;
-            default:
-                indent.AppendLine($"if (form.TryGetValue(key, out var formValue) && formValue.Count > 0) {raw} = formValue.ToString();");
-                break;
-        }
-
-        var parsed = $"{local}ElementParsed";
-        if (property.IsString)
-        {
-            indent.AppendLine($"if ({raw} != null) {local}[{indexExpr}] = {raw};");
-        }
-        else if (property.IsEnum)
-        {
-            indent.AppendLine($"if ({raw} != null && Enum.TryParse<{property.TypeName}>({raw}, true, out var {parsed})) {local}[{indexExpr}] = {parsed};");
-        }
-        else
-        {
-            indent.AppendLine($"if ({raw} != null && {property.GetTryParseMethod()}({raw}, out var {parsed})) {local}[{indexExpr}] = {parsed};");
-        }
+        indent.Unindent();
+        indent.AppendLine("}");
     }
 
     private static void RenderComplexHelpers(IndentedStringBuilder indent, BoundType model)
@@ -521,7 +477,7 @@ internal static class CodeRenderer
     {
         var raw = $"{local}Raw";
         indent.AppendLine($"var {raw} = form != null && form.TryGetValue({keyVar}, out var temp{local}) && temp{local}.Count > 0 ? temp{local}.ToString() : null;");
-        EmitValueParser(indent, property, local, raw);
+        EmitValueParser(indent, property, local, raw, false);
     }
 
     private static void EmitComplexChildCollection(
@@ -553,25 +509,12 @@ internal static class CodeRenderer
         }
         else
         {
-            // Primitive / enum / string collection in complex form type
             var raw = $"{local}ElementRaw";
             indent.AppendLine($"string? {raw} = null;");
             indent.AppendLine("if (form != null && form.TryGetValue(key, out var formValue) && formValue.Count > 0) " +
                               $"{raw} = formValue.ToString();");
 
-            var parsed = $"{local}ElementParsed";
-            if (property.IsString)
-            {
-                indent.AppendLine($"if ({raw} != null) {local}[index] = {raw};");
-            }
-            else if (property.IsEnum)
-            {
-                indent.AppendLine($"if ({raw} != null && Enum.TryParse<{property.TypeName}>({raw}, true, out var {parsed})) {local}[index] = {parsed};");
-            }
-            else
-            {
-                indent.AppendLine($"if ({raw} != null && {property.GetTryParseMethod()}({raw}, out var {parsed})) {local}[index] = {parsed};");
-            }
+            EmitValueParser(indent, property, $"{local}[index] =", raw, false);
         }
 
         indent.Unindent();
