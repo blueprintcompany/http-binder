@@ -28,6 +28,7 @@ app.MapPost("/users", async (UserQueryRequest req, HttpContext httpContext) =>
 
         GuidProperty = req.GuidProperty,
         EnumProperty = req.EnumProperty,
+        NullableEnumProperty = req.NullableEnumProperty,
 
         NullableDateTime = req.NullableDateTime,
         NullableDateTimeOffset = req.NullableDateTimeOffset,
@@ -59,6 +60,7 @@ public partial class UserQueryRequest : PagedRequestBase
     [BindFrom(HttpBinderType.Query, Name = "some_guid")]
     public Guid GuidProperty { get; set; }
     public EnumExample EnumProperty { get; set; }
+    public EnumExample? NullableEnumProperty { get; set; }
     public DateTime? NullableDateTime { get; set; }
     public DateTimeOffset? NullableDateTimeOffset { get; set; }
     public DateTime DateTime { get; set; }
@@ -89,6 +91,7 @@ public class UserQueryResponse
 
     public Guid GuidProperty { get; set; }
     public EnumExample EnumProperty { get; set; }
+    public EnumExample? NullableEnumProperty { get; set; }
 
     public DateTime? NullableDateTime { get; set; }
     public DateTimeOffset? NullableDateTimeOffset { get; set; }

@@ -66,7 +66,7 @@ internal class UserQueryRequestIntegrationTests
             // Primitive values (Form binder)
             { new StringContent("42"), "IntProperty" },
             { new StringContent("Two"), "EnumProperty" },
-
+            { new StringContent(""), "NullableEnumProperty" },
             { new StringContent("true"), "BoolProperty" },
             { new StringContent(""), "NullableBoolProperty" },
             { new StringContent("2024-01-01T12:00:00Z"), "NullableDateTime" },
@@ -110,6 +110,7 @@ internal class UserQueryRequestIntegrationTests
 
         await Assert.That(result.IntProperty).IsEqualTo(42);
         await Assert.That(result.EnumProperty).IsEqualTo(EnumExample.Two);
+        await Assert.That(result.NullableEnumProperty).IsNull();
 
         await Assert.That(result.GuidProperty)
             .IsEqualTo(Guid.Parse("11111111-1111-1111-1111-111111111111"));

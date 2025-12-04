@@ -42,7 +42,6 @@ internal static class CodeRenderer
         indent.Indent();
 
         RenderBindMethod(indent, model);
-        indent.AppendLine();
         RenderComplexHelpers(indent, model);
 
         indent.Unindent();
@@ -87,11 +86,13 @@ internal static class CodeRenderer
             indent.AppendLine();
         }
 
-        indent.AppendLine($"var instance = new {typeName}();");
+        var args = string.Join(", ", model.ConstructorParameterNames.Select(name => $"{name}: {ToCamelCase(name)}"));
+        indent.AppendLine($"var instance = new {typeName}({args});");
 
         foreach (var p in model.Properties)
         {
-            if (p.IsIgnored) continue;
+            if (p.IsIgnored
+                || (model.HasPrimaryConstructor && model.ConstructorParameterNames.Contains(p.Name))) continue;
 
             var local = ToCamelCase(p.Name);
 
@@ -313,7 +314,7 @@ internal static class CodeRenderer
         else if (property.IsEnum)
         {
             indent.AppendLine(
-                $"if ({rawVar} != null && Enum.TryParse<{property.TypeName}>({rawVar}, true, out var {parsed})) {assign}{parsed}{closing}");
+                $"if ({rawVar} != null && Enum.TryParse<{property.NonNullTypeName}>({rawVar}, true, out var {parsed})) {assign}{parsed}{closing}");
         }
         else
         {

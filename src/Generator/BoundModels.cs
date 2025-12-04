@@ -28,6 +28,7 @@ internal sealed record BoundProperty(
             IsIgnored: true,
             ChildProperties: []);
 
+    public string NonNullTypeName => IsNullable ? TypeName.TrimEnd('?') : TypeName;
     public string TypeName => ScalarType.TypeName;
     public bool IsEnum => ScalarType.IsEnum;
     public bool IsGuid => ScalarType.IsGuid;
@@ -38,26 +39,26 @@ internal sealed record BoundProperty(
     public bool IsReferenceType => ScalarType.IsReferenceType;
 
     public string GetTryParseMethod() =>
-        TypeName switch
+        NonNullTypeName switch
         {
-            "bool" or "bool?" => "bool.TryParse",
-            "byte" or "byte?" => "byte.TryParse",
-            "sbyte" or "sbyte?" => "sbyte.TryParse",
-            "short" or "short?" => "short.TryParse",
-            "ushort" or "ushort?" => "ushort.TryParse",
-            "int" or "int?" => "int.TryParse",
-            "uint" or "uint?" => "uint.TryParse",
-            "long" or "long?" => "long.TryParse",
-            "ulong" or "ulong?" => "ulong.TryParse",
-            "float" or "float?" => "float.TryParse",
-            "double" or "double?" => "double.TryParse",
-            "decimal" or "decimal?" => "decimal.TryParse",
-            "System.Guid" or "System.Guid?" => "System.Guid.TryParse",
-            "System.DateTime" or "System.DateTime?" => "System.DateTime.TryParse",
-            "System.DateTimeOffset" or "System.DateTimeOffset?" => "System.DateTimeOffset.TryParse",
-            "System.DateOnly" or "System.DateOnly?" => "System.DateOnly.TryParse",
-            "System.TimeOnly" or "System.TimeOnly?" => "System.TimeOnly.TryParse",
-            "System.TimeSpan" or "System.TimeSpan?" => "System.TimeSpan.TryParse",
+            "bool" => "bool.TryParse",
+            "byte" => "byte.TryParse",
+            "sbyte" => "sbyte.TryParse",
+            "short" => "short.TryParse",
+            "ushort" => "ushort.TryParse",
+            "int" => "int.TryParse",
+            "uint" => "uint.TryParse",
+            "long" => "long.TryParse",
+            "ulong" => "ulong.TryParse",
+            "float" => "float.TryParse",
+            "double" => "double.TryParse",
+            "decimal" => "decimal.TryParse",
+            "System.Guid" => "System.Guid.TryParse",
+            "System.DateTime" => "System.DateTime.TryParse",
+            "System.DateTimeOffset" => "System.DateTimeOffset.TryParse",
+            "System.DateOnly" => "System.DateOnly.TryParse",
+            "System.TimeOnly" => "System.TimeOnly.TryParse",
+            "System.TimeSpan" => "System.TimeSpan.TryParse",
             _ => "int.TryParse"
         };
 }
@@ -72,7 +73,10 @@ internal sealed record BoundType(
     BoundTypeKind Kind,
     HttpBinderType ClassHttpBinderType,
     ImmutableArray<BoundProperty> Properties,
-    ImmutableArray<string> ConstructorParameterNames);
+    ImmutableArray<string> ConstructorParameterNames)
+{
+    public bool HasPrimaryConstructor => ConstructorParameterNames.Length > 0;
+}
 
 internal enum BoundTypeKind
 {

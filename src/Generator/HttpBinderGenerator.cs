@@ -61,7 +61,7 @@ namespace Blueprint.HttpBinder
 
             var ctor = ctors.FirstOrDefault(c => c.Parameters.Length > 0);
 
-            var ctorParameterNames = new ImmutableArray<string>();
+            var ctorParameterNames = ImmutableArray<string>.Empty;
 
             if (ctor is not null)
             {
