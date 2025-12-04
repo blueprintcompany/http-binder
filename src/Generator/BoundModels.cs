@@ -69,6 +69,13 @@ internal sealed record BoundType(
     string Name,
     string Namespace,
     string FullName,
+    BoundTypeKind Kind,
     HttpBinderType ClassHttpBinderType,
     ImmutableArray<BoundProperty> Properties,
     ImmutableArray<string> ConstructorParameterNames);
+
+internal enum BoundTypeKind
+{
+    Class,
+    RecordClass
+}

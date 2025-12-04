@@ -84,11 +84,13 @@ namespace Blueprint.HttpBinder
 
             var name = typeSymbol.Name;
             var fullName = typeSymbol.GetFullTypeName();
+            var boundTypeKind = typeSymbol.IsRecord ? BoundTypeKind.RecordClass : BoundTypeKind.Class;
 
             return new BoundType(
                 name,
                 @namespace,
                 fullName,
+                boundTypeKind,
                 classHttpBinderType,
                 properties,
                 ctorParameterNames);
