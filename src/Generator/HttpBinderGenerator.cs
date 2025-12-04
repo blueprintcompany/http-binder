@@ -49,8 +49,8 @@ namespace Blueprint.HttpBinder
                 classHttpBinderType = parsedBinderType;
             }
 
-            var properties = GetAllViableProperties(typeSymbol)
-                .Select(p => BuildBoundProperty(p, classHttpBinderType, []))
+            var properties = BindingModelBuilder.GetAllViableProperties(typeSymbol)
+                .Select(p => BindingModelBuilder.BuildBoundProperty(p, classHttpBinderType, []))
                 .ToImmutableArray();
 
             // Choose the "largest" public constructor, if any
@@ -92,133 +92,6 @@ namespace Blueprint.HttpBinder
                 classHttpBinderType,
                 properties,
                 ctorParameterNames);
-        }
-
-        private static IEnumerable<IPropertySymbol> GetAllViableProperties(INamedTypeSymbol type)
-        {
-            var map = new Dictionary<string, IPropertySymbol>(StringComparer.OrdinalIgnoreCase);
-
-            for (var current = type; current is not null && current.SpecialType != SpecialType.System_Object; current = current.BaseType)
-            {
-                foreach (var propertySymbol in current.GetMembers().OfType<IPropertySymbol>())
-                {
-                    if (propertySymbol.IsStatic)
-                        continue;
-
-                    if (propertySymbol.DeclaredAccessibility is not Accessibility.Public
-                        and not Accessibility.Protected
-                        and not Accessibility.ProtectedOrInternal)
-                        continue;
-
-                    if (propertySymbol.SetMethod is null)
-                        continue;
-
-                    if (!map.ContainsKey(propertySymbol.Name))
-                        map[propertySymbol.Name] = propertySymbol;
-                }
-            }
-
-            return map.Values;
-        }
-
-        private static BoundProperty BuildBoundProperty(IPropertySymbol propertySymbol, HttpBinderType parentHttpBinderType, HashSet<string> recursionGuard)
-        {
-            var httpBinderType = parentHttpBinderType;
-            var type = propertySymbol.Type;
-
-            var declaredTypeName = type.ToDisplayString();
-            if (!recursionGuard.Add(declaredTypeName))
-            {
-                return BoundProperty.Ignore(propertySymbol.Name, httpBinderType);
-            }
-
-            if (type.IsDictionary() || type.IsNestedCollection())
-            {
-                return BoundProperty.Ignore(propertySymbol.Name, httpBinderType);
-            }
-
-            var keyName = propertySymbol.Name;
-            var attributes = propertySymbol.GetAttributes();
-
-            foreach (var attribute in attributes)
-            {
-                var attrName = attribute.AttributeClass?.ToDisplayString();
-                if (attrName is null)
-                    continue;
-
-                if (attrName == AttributeConstants.BindFromIgnoreAttribute)
-                {
-                    return BoundProperty.Ignore(propertySymbol.Name, httpBinderType);
-                }
-
-                if (attrName == AttributeConstants.BindFromAttribute)
-                {
-                    attribute.TryGetBinderType(out var parsedBinderType);
-                    httpBinderType = parsedBinderType;
-
-                    foreach (var namedArgument in attribute.NamedArguments)
-                    {
-                        if (namedArgument.Key == nameof(BindFromAttribute.Name) && namedArgument.Value.Value is string newName)
-                        {
-                            keyName = newName;
-                        }
-                    }
-                }
-            }
-
-            (bool isNullable,
-             bool isGuid,
-             bool isEnum,
-             bool isPrimitive,
-             bool isString,
-             bool isComplex,
-             bool isFormFile) = type.GetPropertyAttributes();
-
-            var collectionType = type.FindCollectionType();
-            var isCollection = collectionType is not null;
-            var typeName = isCollection ? collectionType!.ToDisplayString() : type.ToDisplayString();
-
-            ImmutableArray<BoundProperty> children = [];
-
-            if (!isFormFile)
-            {
-                if (isCollection)
-                {
-                    (bool _,
-                         bool collectionTypeIsGuid,
-                         bool collectionTypeIsEnum,
-                         bool collectionTypeIsPrimitive,
-                         bool collectionTypeIsString,
-                         bool collectionTypeIsComplex,
-                         bool collectionTypeIsFormFile) = collectionType!.GetPropertyAttributes();
-
-                    if (collectionTypeIsComplex && collectionType is INamedTypeSymbol elementNamed)
-                    {
-                        children = [.. GetAllViableProperties(elementNamed).Select(ps => BuildBoundProperty(ps, httpBinderType, recursionGuard))];
-                    }
-                }
-                else if (!isCollection && isComplex && type is INamedTypeSymbol typeNamed)
-                {
-                    children = [.. GetAllViableProperties(typeNamed).Select(ps => BuildBoundProperty(ps, httpBinderType, recursionGuard))];
-                }
-            }
-
-            return new BoundProperty(
-                Name: propertySymbol.Name,
-                KeyName: keyName,
-                TypeName: typeName,
-                DeclaredTypeName: declaredTypeName,
-                HttpBinderType: httpBinderType,
-                IsNullable: isNullable,
-                IsCollection: isCollection,
-                IsEnum: isEnum,
-                IsGuid: isGuid,
-                IsPrimitive: isPrimitive,
-                IsString: isString,
-                IsComplex: isComplex,
-                IsFormFile: isFormFile,
-                IsIgnored: false,
-                ChildProperties: children);
         }
     }
 }

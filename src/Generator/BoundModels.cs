@@ -8,17 +8,11 @@ namespace Blueprint.HttpBinder;
 internal sealed record BoundProperty(
     string Name,
     string KeyName,
-    string TypeName,
     string DeclaredTypeName,
     HttpBinderType HttpBinderType,
+    ScalarTypeInfo ScalarType,
     bool IsNullable,
     bool IsCollection,
-    bool IsEnum,
-    bool IsGuid,
-    bool IsPrimitive,
-    bool IsString,
-    bool IsComplex,
-    bool IsFormFile,
     bool IsIgnored,
     ImmutableArray<BoundProperty> ChildProperties)
 {
@@ -28,17 +22,20 @@ internal sealed record BoundProperty(
             KeyName: name,
             DeclaredTypeName: name,
             HttpBinderType: httpBinderType,
+            ScalarType: ScalarTypeInfo.Unknown,
             IsNullable: false,
             IsCollection: false,
-            TypeName: string.Empty,
-            IsEnum: false,
-            IsGuid: false,
-            IsPrimitive: false,
-            IsString: false,
-            IsComplex: false,
-            IsFormFile: false,
             IsIgnored: true,
             ChildProperties: []);
+
+    public string TypeName => ScalarType.TypeName;
+    public bool IsEnum => ScalarType.IsEnum;
+    public bool IsGuid => ScalarType.IsGuid;
+    public bool IsString => ScalarType.IsString;
+    public bool IsPrimitive => ScalarType.IsPrimitive;
+    public bool IsFormFile => ScalarType.IsFormFile;
+    public bool IsValueType => ScalarType.IsValueType;
+    public bool IsReferenceType => ScalarType.IsReferenceType;
 
     public string GetTryParseMethod() =>
         TypeName switch

@@ -63,6 +63,8 @@ public partial class UserQueryRequest : PagedRequestBase
     public DateTimeOffset? DateTimeOffset { get; set; }
     [BindFrom(HttpBinderType.Query)]
     public string? Search { get; set; }
+    [BindFrom(HttpBinderType.Query)]
+    public int[] IntCollection { get; set; } = [];
     public NestedClass NestedClasses { get; set; } = new();
 
     public partial class NestedClass

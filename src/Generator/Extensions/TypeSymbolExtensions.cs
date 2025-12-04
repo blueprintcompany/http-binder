@@ -39,26 +39,40 @@ internal static class TypeSymbolExtensions
             return FindCollectionType(inner) is not null;
         }
 
-        public (bool isNullable, bool isGuid, bool isEnum, bool isPrimitive, bool isString, bool isComplex, bool isFormFile) GetPropertyAttributes()
+        /// <summary>
+        /// Classifies a *scalar* type (no collection awareness).
+        /// The caller is responsible for passing either the property type
+        /// or the collection element type.
+        /// </summary>
+        public ScalarTypeInfo GetScalarTypeInfo()
         {
             var isNullable = typeSymbol.NullableAnnotation == NullableAnnotation.Annotated;
             var underlying = UnwrapNullable(typeSymbol);
 
+            var underlyingTypeName = underlying.ToDisplayString();
+
             var isString = underlying.SpecialType == SpecialType.System_String;
-            var isGuid = IsGuid(underlying);
+            var isGuid = underlyingTypeName == "System.Guid";
             var isEnum = underlying.TypeKind == TypeKind.Enum;
+
+            // Primitives / primitive-like types
+            var isSpecialPrimitive = IsSpecialPrimitive(underlying);
+            var isSimpleBclScalar = IsSimpleBclScalar(underlyingTypeName);
+            var isPrimitive = isSpecialPrimitive || isSimpleBclScalar;
+
+            // IFormFile as a scalar
             var isFormFile = underlying.IsSingleFormFile() || underlying.IsListOfFormFiles();
 
-            // Normal primitives + "primitive-like" BCL types
-            var isSpecialPrimitive = IsSpecialPrimitive(underlying);
-            var isSimpleBcl = IsSimpleBclScalar(underlying);
+            return new ScalarTypeInfo(
+                IsNullable: isNullable,
+                IsGuid: isGuid,
+                IsEnum: isEnum,
+                IsPrimitive: isPrimitive,
+                IsString: isString,
+                IsFormFile: isFormFile,
+                TypeName: underlyingTypeName);
 
-            var isPrimitive = isSpecialPrimitive || isSimpleBcl;
-            var isComplex = !(isPrimitive || isString || isGuid || isEnum) && !isFormFile;
-
-            return (isNullable, isGuid, isEnum, isPrimitive, isString, isComplex, isFormFile);
-
-            ITypeSymbol UnwrapNullable(ITypeSymbol type)
+            static ITypeSymbol UnwrapNullable(ITypeSymbol type)
             {
                 if (type is INamedTypeSymbol named &&
                     named.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T &&
@@ -70,14 +84,7 @@ internal static class TypeSymbolExtensions
                 return type;
             }
 
-            bool IsGuid(ITypeSymbol underlyingType)
-            {
-                var name = underlyingType.ToDisplayString();
-
-                return name == "System.Guid";
-            }
-
-            bool IsSpecialPrimitive(ITypeSymbol underlyingType)
+            static bool IsSpecialPrimitive(ITypeSymbol underlyingType)
                 => underlyingType.SpecialType is
                    SpecialType.System_Boolean or
                    SpecialType.System_Char or
@@ -94,12 +101,9 @@ internal static class TypeSymbolExtensions
                    SpecialType.System_Decimal or
                    SpecialType.System_DateTime;
 
-            bool IsSimpleBclScalar(ITypeSymbol underlyingType)
+            static bool IsSimpleBclScalar(string underlyingTypeName)
             {
-                var name = underlyingType.ToDisplayString();
-
-                return name is
-                    "System.DateTime" or
+                return underlyingTypeName is
                     "System.DateTimeOffset" or
                     "System.DateOnly" or
                     "System.TimeOnly" or
@@ -109,15 +113,12 @@ internal static class TypeSymbolExtensions
 
         public ITypeSymbol? FindCollectionType()
         {
-            if (typeSymbol.IsFormFileCollection())
-            {
-                return typeSymbol.ContainingAssembly.GetTypeByMetadataName("Microsoft.AspNetCore.Http.IFormFile");
-            }
-            else if (typeSymbol is IArrayTypeSymbol arr)
+            if (typeSymbol is IArrayTypeSymbol arr)
             {
                 return arr.ElementType;
             }
-            else if (typeSymbol is INamedTypeSymbol named && named.IsGenericType && named.TypeArguments.Length == 1) // Analyzers take care of other cases where multiple types are provided.
+            else if (typeSymbol is INamedTypeSymbol named && named.IsGenericType
+                && named.TypeArguments.Length == 1) // Analyzers take care of other cases where multiple types are provided.
             {
                 var baseName = named.ConstructedFrom.ToDisplayString();
 
@@ -135,33 +136,25 @@ internal static class TypeSymbolExtensions
             return null;
         }
 
-        public bool IsFormFileCollection()
-            => typeSymbol.ToDisplayString() == "Microsoft.AspNetCore.Http.IFormFileCollection";
-
         public bool IsSingleFormFile()
             => typeSymbol.ToDisplayString() is "Microsoft.AspNetCore.Http.IFormFile?" or "Microsoft.AspNetCore.Http.IFormFile";
 
         public bool IsListOfFormFiles()
         {
-            // IFormFileCollection
-            if (IsFormFileCollection(typeSymbol))
+            if (typeSymbol.ToDisplayString() == "Microsoft.AspNetCore.Http.IFormFileCollection")
                 return true;
 
-            // Array: IFormFile[]
-            if (typeSymbol is IArrayTypeSymbol arr &&
-                arr.ElementType.ToDisplayString() == "Microsoft.AspNetCore.Http.IFormFile")
+            var isArrayOfFormFiles = typeSymbol is IArrayTypeSymbol arr &&
+                arr.ElementType.ToDisplayString() == "Microsoft.AspNetCore.Http.IFormFile";
+            if (isArrayOfFormFiles)
                 return true;
 
-            // Generic collections: IEnumerable<IFormFile>, List<IFormFile>, ICollection<IFormFile>, etc.
-            if (typeSymbol is INamedTypeSymbol named &&
+            var isGenericCollection = typeSymbol is INamedTypeSymbol named &&
                 named.IsGenericType &&
                 named.TypeArguments.Length == 1 &&
-                named.TypeArguments[0].ToDisplayString() == "Microsoft.AspNetCore.Http.IFormFile")
-            {
-                return true;
-            }
+                named.TypeArguments[0].ToDisplayString() == "Microsoft.AspNetCore.Http.IFormFile";
 
-            return false;
+            return isGenericCollection;
         }
 
     }

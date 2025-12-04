@@ -76,7 +76,7 @@ internal static class CodeRenderer
         {
             if (property.IsIgnored) continue;
 
-            GeneratePropertyBinding(indent, property, usesForm);
+            GeneratePropertyBinding(indent, property);
             indent.AppendLine();
         }
 
@@ -85,7 +85,18 @@ internal static class CodeRenderer
         foreach (var p in model.Properties)
         {
             if (p.IsIgnored) continue;
-            indent.AppendLine($"instance.{p.Name} = {ToCamelCase(p.Name)};");
+
+            var local = ToCamelCase(p.Name);
+
+            if (p.IsCollection && !p.IsFormFile)
+            {
+                var assignmentExpr = GetCollectionAssignmentExpression(p, local);
+                indent.AppendLine($"instance.{p.Name} = {assignmentExpr};");
+            }
+            else
+            {
+                indent.AppendLine($"instance.{p.Name} = {local};");
+            }
         }
 
         indent.AppendLine("return instance;");
@@ -98,6 +109,9 @@ internal static class CodeRenderer
 
     private static bool UsesFormRecursive(BoundProperty property)
     {
+        if (property.IsIgnored)
+            return false;
+
         if (property.HttpBinderType == HttpBinderType.Form)
             return true;
 
@@ -109,15 +123,14 @@ internal static class CodeRenderer
     }
 
     private static bool UsesQueryAtRoot(BoundType model) =>
-        model.Properties.Any(p => p.HttpBinderType == HttpBinderType.Query);
+        model.Properties.Any(p => !p.IsIgnored && p.HttpBinderType == HttpBinderType.Query);
 
     private static bool UsesRouteAtRoot(BoundType model) =>
-        model.Properties.Any(p => p.HttpBinderType == HttpBinderType.Route);
+        model.Properties.Any(p => !p.IsIgnored && p.HttpBinderType == HttpBinderType.Route);
 
     private static void GeneratePropertyBinding(
         IndentedStringBuilder indent,
-        BoundProperty property,
-        bool usesForm)
+        BoundProperty property)
     {
         var name = property.Name;
         var local = ToCamelCase(name);
@@ -125,24 +138,36 @@ internal static class CodeRenderer
 
         EmitLocalDeclaration(indent, property, local, elementType);
 
+        // IFormFile / IFormFileCollection / List<IFormFile> – form-only
         if (property.IsFormFile)
         {
-            EmitFormFileBinding(indent, property);
+            if (property.HttpBinderType == HttpBinderType.Form)
+            {
+                EmitFormFileBinding(indent, property);
+            }
+            // else: unsupported combination; leave as default/null
             return;
         }
 
+        // Collections
         if (property.IsCollection)
         {
-            GenerateCollectionBinding(indent, property, local, usesForm);
+            GenerateCollectionBinding(indent, property, local);
             return;
         }
 
-        if (property.IsComplex)
+        // Complex (non-collection) – only supported from Form
+        if (property.IsReferenceType)
         {
-            EmitComplexCall(indent, property, local, usesForm);
+            if (property.HttpBinderType == HttpBinderType.Form)
+            {
+                EmitComplexCall(indent, property, local);
+            }
+            // Query/Route complex binding is not supported; leave default
             return;
         }
 
+        // Simple scalar value
         EmitSimpleBinding(indent, property, local);
     }
 
@@ -152,12 +177,14 @@ internal static class CodeRenderer
         string local,
         string typeName)
     {
+        // Root IFormFileCollection / List<IFormFile> – we let the binding logic assign.
         if (property.IsFormFile && property.IsCollection)
         {
             indent.AppendLine($"{property.DeclaredTypeName} {local} = null!;");
             return;
         }
 
+        // Collections (we always back them by List<T> locals for non-file types)
         if (property.IsCollection)
         {
             var listType = $"global::System.Collections.Generic.List<{typeName}>";
@@ -165,24 +192,28 @@ internal static class CodeRenderer
             return;
         }
 
+        // Scalar IFormFile
         if (property.IsFormFile)
         {
             indent.AppendLine($"{typeName} {local} = null!;");
             return;
         }
 
-        if (property.IsComplex && !property.IsNullable)
+        // Complex scalar
+        if (property.IsReferenceType && !property.IsNullable)
         {
             indent.AppendLine($"{typeName} {local} = null!;");
             return;
         }
 
+        // Nullable or string scalar
         if (property.IsNullable || property.IsString)
         {
             indent.AppendLine($"{typeName} {local} = null!;");
             return;
         }
 
+        // Non-nullable primitive / enum
         indent.AppendLine($"{typeName} {local} = default;");
     }
 
@@ -243,7 +274,7 @@ internal static class CodeRenderer
                 indent.AppendLine(
                     $"var {rawVar} = route.TryGetValue(\"{key}\", out var {local}RouteValue) ? {local}RouteValue?.ToString() : null;");
                 break;
-
+            case HttpBinderType.Form:
             default:
                 indent.AppendLine(
                     $"var {rawVar} = form.TryGetValue(\"{key}\", out var {local}FormValue) && {local}FormValue.Count > 0 ? {local}FormValue.ToString() : null;");
@@ -277,30 +308,42 @@ internal static class CodeRenderer
     private static void EmitComplexCall(
         IndentedStringBuilder indent,
         BoundProperty property,
-        string local,
-        bool requiresForm)
+        string local)
     {
+        // Only used for HttpBinderType.Form
         var helper = $"Bind_{Sanitize(property.TypeName)}";
-        var formArg = requiresForm ? "form" : "null";
-        indent.AppendLine($"{local} = {helper}(http, \"{property.KeyName}.\", {formArg});");
+        indent.AppendLine($"{local} = {helper}(http, \"{property.KeyName}.\", form);");
     }
 
     private static void GenerateCollectionBinding(
         IndentedStringBuilder indent,
         BoundProperty property,
-        string local,
-        bool requiresForm)
+        string local)
     {
-        var keys = property.HttpBinderType switch
+        // Route: collections are not supported
+        if (property.HttpBinderType == HttpBinderType.Route)
+        {
+            indent.AppendLine($"// Collections cannot be bound from route values. '{property.Name}' will remain empty.");
+            return;
+        }
+
+        // Query: only primitive/enum/string collections are allowed
+        if (property.HttpBinderType == HttpBinderType.Query && property.IsReferenceType)
+        {
+            indent.AppendLine($"// Complex collections cannot be bound from query string. '{property.Name}' will remain empty.");
+            return;
+        }
+
+        // Form: complex collections ARE allowed, everything routes through form
+        var keysSource = property.HttpBinderType switch
         {
             HttpBinderType.Query => "query.Keys",
-            HttpBinderType.Route => "route.Keys",
             _ => "form.Keys"
         };
 
         indent.AppendLine($"var {local}Prefix = \"{property.KeyName}[\";");
 
-        indent.AppendLine($"foreach (var key in {keys})");
+        indent.AppendLine($"foreach (var key in {keysSource})");
         indent.AppendLine("{");
         indent.Indent();
 
@@ -309,17 +352,18 @@ internal static class CodeRenderer
         indent.AppendLine("var idxEnd = key.IndexOf(']', idxStart);");
         indent.AppendLine("if (idxEnd < 0) continue;");
         indent.AppendLine("var idxText = key.Substring(idxStart, idxEnd - idxStart);");
-        indent.AppendLine($"if (!int.TryParse(idxText, out var index)) continue;");
-        indent.AppendLine($"while ({local}.Count <= index) {local}.Add(default!);");
+        indent.AppendLine("if (!int.TryParse(idxText, out var index)) continue;");
+        indent.AppendLine($"while ({local}.Count <= index) {local}.Add(default);");
 
-        if (property.IsComplex)
+        if (property.IsReferenceType && property.HttpBinderType == HttpBinderType.Form)
         {
+            // Complex collections only from form
             var helper = $"Bind_{Sanitize(property.TypeName)}";
-            var formArg = requiresForm ? "form" : "null";
-            indent.AppendLine($"{local}[index] = {helper}(http, key + \".\", {formArg});");
+            indent.AppendLine($"{local}[index] = {helper}(http, key + \".\", form);");
         }
         else
         {
+            // Primitive / enum / string collections
             EmitCollectionElementBinding(indent, local, property, "index");
         }
 
@@ -342,16 +386,10 @@ internal static class CodeRenderer
             case HttpBinderType.Query:
                 indent.AppendLine($"if (query.TryGetValue(key, out var queryValue) && queryValue.Count > 0) {raw} = queryValue.ToString();");
                 break;
-
-            case HttpBinderType.Route:
-                indent.AppendLine($"if (route.TryGetValue(key, out var routeValue)) {raw} = routeValue?.ToString();");
-                break;
-
             default:
                 indent.AppendLine($"if (form.TryGetValue(key, out var formValue) && formValue.Count > 0) {raw} = formValue.ToString();");
                 break;
         }
-
 
         var parsed = $"{local}ElementParsed";
         if (property.IsString)
@@ -377,13 +415,10 @@ internal static class CodeRenderer
 
         void Walk(BoundProperty p)
         {
-            if (p.IsFormFile)
+            if (p.IsIgnored || p.IsFormFile)
                 return;
 
-            if (p.IsComplex && !p.IsCollection && emitted.Add(p.TypeName))
-                RenderComplexHelper(indent, p.TypeName, p.ChildProperties);
-
-            if (p.IsComplex && p.IsCollection && emitted.Add(p.TypeName))
+            if (p.IsReferenceType && emitted.Add(p.TypeName))
                 RenderComplexHelper(indent, p.TypeName, p.ChildProperties);
 
             foreach (var c in p.ChildProperties)
@@ -405,17 +440,19 @@ internal static class CodeRenderer
         indent.AppendLine("{");
         indent.Indent();
 
+        // Locals
         foreach (var property in properties)
         {
             var local = ToCamelCase(property.Name);
-            if (property.IsCollection)
+
+            if (property.IsCollection && !property.IsFormFile)
             {
                 var listType = $"global::System.Collections.Generic.List<{property.TypeName}>";
                 indent.AppendLine($"{listType} {local} = new {listType}();");
             }
-            else if (property.IsNullable || property.IsString)
+            else if (property.IsNullable || property.IsString || property.IsFormFile)
             {
-                indent.AppendLine($"{property.TypeName} {local} = null;");
+                indent.AppendLine($"{property.TypeName} {local} = null!;");
             }
             else
             {
@@ -425,17 +462,23 @@ internal static class CodeRenderer
 
         indent.AppendLine();
 
+        // Binding logic for each child property (form-only)
         foreach (var property in properties)
         {
             var local = ToCamelCase(property.Name);
             var keyVar = $"{local}Key";
             indent.AppendLine($"var {keyVar} = prefix + \"{property.KeyName}\";");
 
-            if (property.IsCollection)
+            if (property.IsFormFile)
+            {
+                // We do not attempt to support IFormFile inside complex types today; leave default.
+                indent.AppendLine($"// File uploads inside complex types are not bound automatically. '{property.Name}' remains at its default value.");
+            }
+            else if (property.IsCollection)
             {
                 EmitComplexChildCollection(indent, property, local, keyVar);
             }
-            else if (property.IsComplex)
+            else if (property.IsReferenceType)
             {
                 var nested = $"Bind_{Sanitize(property.TypeName)}";
                 indent.AppendLine($"{local} = {nested}(http, {keyVar} + \".\", form);");
@@ -453,7 +496,16 @@ internal static class CodeRenderer
         foreach (var c in properties)
         {
             var local = ToCamelCase(c.Name);
-            indent.AppendLine($"instance.{c.Name} = {local};");
+
+            if (c.IsCollection && !c.IsFormFile)
+            {
+                var assignmentExpr = GetCollectionAssignmentExpression(c, local);
+                indent.AppendLine($"instance.{c.Name} = {assignmentExpr};");
+            }
+            else
+            {
+                indent.AppendLine($"instance.{c.Name} = {local};");
+            }
         }
 
         indent.AppendLine("return instance;");
@@ -478,6 +530,7 @@ internal static class CodeRenderer
         string local,
         string keyVar)
     {
+        // Complex collections inside complex types are always form-based
         var prefixVar = $"{local}Prefix";
         indent.AppendLine($"var {prefixVar} = {keyVar} + \"[\";");
 
@@ -490,21 +543,78 @@ internal static class CodeRenderer
         indent.AppendLine("var idxEnd = key.IndexOf(']', idxStart);");
         indent.AppendLine("if (idxEnd < 0) continue;");
         indent.AppendLine("var idxText = key.Substring(idxStart, idxEnd - idxStart);");
-        indent.AppendLine($"if (!int.TryParse(idxText, out var index)) continue;");
+        indent.AppendLine("if (!int.TryParse(idxText, out var index)) continue;");
         indent.AppendLine($"while ({local}.Count <= index) {local}.Add(default);");
 
-        if (property.IsComplex)
+        if (property.IsReferenceType)
         {
             var nested = $"Bind_{Sanitize(property.TypeName)}";
             indent.AppendLine($"{local}[index] = {nested}(http, key + \".\", form);");
         }
         else
         {
-            EmitCollectionElementBinding(indent, local, property, "index");
+            // Primitive / enum / string collection in complex form type
+            var raw = $"{local}ElementRaw";
+            indent.AppendLine($"string? {raw} = null;");
+            indent.AppendLine("if (form != null && form.TryGetValue(key, out var formValue) && formValue.Count > 0) " +
+                              $"{raw} = formValue.ToString();");
+
+            var parsed = $"{local}ElementParsed";
+            if (property.IsString)
+            {
+                indent.AppendLine($"if ({raw} != null) {local}[index] = {raw};");
+            }
+            else if (property.IsEnum)
+            {
+                indent.AppendLine($"if ({raw} != null && Enum.TryParse<{property.TypeName}>({raw}, true, out var {parsed})) {local}[index] = {parsed};");
+            }
+            else
+            {
+                indent.AppendLine($"if ({raw} != null && {property.GetTryParseMethod()}({raw}, out var {parsed})) {local}[index] = {parsed};");
+            }
         }
 
         indent.Unindent();
         indent.AppendLine("}");
+    }
+
+    private static string GetCollectionAssignmentExpression(BoundProperty property, string local)
+    {
+        // We only apply this for non-formfile collections (where locals are List<T>)
+        var declared = property.DeclaredTypeName;
+
+        // Arrays: T[] => ToArray(List<T>)
+        if (declared.EndsWith("[]"))
+        {
+            return $"global::System.Linq.Enumerable.ToArray({local})";
+        }
+
+        // Normalize in case the declared type has global:: prefix
+        if (declared.StartsWith("global::"))
+            declared = declared.Substring("global::".Length);
+
+        // List<T> – List<T> already
+        if (declared.StartsWith("System.Collections.Generic.List<"))
+        {
+            return local;
+        }
+
+        // IEnumerable<T>, ICollection<T> – List<T> implements these directly
+        if (declared.StartsWith("System.Collections.Generic.IEnumerable<") ||
+            declared.StartsWith("System.Collections.Generic.ICollection<"))
+        {
+            return local;
+        }
+
+        // IReadOnlyCollection<T>, IReadOnlyList<T> – use ToArray as a simple, safe representation
+        if (declared.StartsWith("System.Collections.Generic.IReadOnlyCollection<") ||
+            declared.StartsWith("System.Collections.Generic.IReadOnlyList<"))
+        {
+            return $"global::System.Linq.Enumerable.ToArray({local})";
+        }
+
+        // Fallback: assign List<T> as-is; if this is incompatible the compiler will tell the user.
+        return local;
     }
 
     private static string Sanitize(string fullTypeName)

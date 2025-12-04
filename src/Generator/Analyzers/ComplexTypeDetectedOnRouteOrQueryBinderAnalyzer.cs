@@ -50,13 +50,36 @@ public sealed class ComplexTypeDetectedOnRouteOrQueryBinderAnalyzer : Diagnostic
             binderType = fromClass;
         }
 
-        if (binderType != HttpBinderType.Query && binderType != HttpBinderType.Route)
+        if (binderType is HttpBinderType.Form)
             return;
 
         var type = prop.Type;
-        if (type.IsValueType || type.SpecialType == SpecialType.System_String || type.TypeKind == TypeKind.Enum)
+
+        var element = type.FindCollectionType();
+        if (element != null)
+        {
+            var info = element.GetScalarTypeInfo();
+
+            if (info.IsPrimitive || info.IsString || info.IsEnum || info.IsGuid)
+                return;
+
+            Report(ctx, prop, binderType);
+            return;
+        }
+
+        // ❗ scalar type classification
+        var scalar = type.GetScalarTypeInfo();
+
+        // allowed: primitive scalars
+        if (scalar.IsPrimitive || scalar.IsString || scalar.IsEnum || scalar.IsGuid)
             return;
 
+        // ❌ complex scalar on query/route => warn
+        Report(ctx, prop, binderType);
+    }
+
+    private static void Report(SymbolAnalysisContext ctx, IPropertySymbol prop, HttpBinderType binderType)
+    {
         string source = binderType == HttpBinderType.Query ? "the query string" : "route data";
 
         var diagnostic = Diagnostic.Create(
@@ -68,4 +91,5 @@ public sealed class ComplexTypeDetectedOnRouteOrQueryBinderAnalyzer : Diagnostic
 
         ctx.ReportDiagnostic(diagnostic);
     }
+
 }
