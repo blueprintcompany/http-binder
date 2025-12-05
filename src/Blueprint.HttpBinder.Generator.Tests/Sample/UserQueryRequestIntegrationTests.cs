@@ -20,7 +20,6 @@ internal class UserQueryRequestIntegrationTests
 
     private readonly TestAppFactory _factory = new();
 
-
     [Test]
     public async Task WhenPostingMultipartAndQuery_ThenBinderDeserializesCorrectly()
     {

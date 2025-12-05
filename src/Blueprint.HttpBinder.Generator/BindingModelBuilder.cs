@@ -37,7 +37,7 @@ internal static class BindingModelBuilder
     }
 
 
-    public static BoundProperty BuildBoundProperty(
+    public static BoundProperty? BuildBoundProperty(
         IPropertySymbol propertySymbol,
         HttpBinderType parentHttpBinderType,
         HashSet<string> recursionGuard,
@@ -51,13 +51,13 @@ internal static class BindingModelBuilder
         // If we have already seen this type in the current recursion chain, ignore it to prevent infinite loops.
         if (!recursionGuard.Add(declaredTypeName))
         {
-            return BoundProperty.Ignore(propertySymbol.Name, httpBinderType);
+            return null;
         }
 
         // Dictionaries and nested collections are out of scope
         if (type.IsDictionary() || type.IsNestedCollection())
         {
-            return BoundProperty.Ignore(propertySymbol.Name, httpBinderType);
+            return null;
         }
 
         var keyName = propertySymbol.Name;
@@ -71,7 +71,7 @@ internal static class BindingModelBuilder
 
             if (attrName == AttributeConstants.BindFromIgnoreAttribute)
             {
-                return BoundProperty.Ignore(propertySymbol.Name, httpBinderType);
+                return null;
             }
 
             if (attrName == AttributeConstants.BindFromAttribute)
@@ -109,15 +109,17 @@ internal static class BindingModelBuilder
         var children = new EquatableArray<BoundProperty>();
 
         // Build children only for complex types.
-        if (isCollection && scalarInfo.IsReferenceType && collectionElementType is INamedTypeSymbol elementNamed)
+        if (scalarInfo.IsReferenceType)
         {
-            children = new EquatableArray<BoundProperty>(
-                [.. GetAllViableProperties(elementNamed).Select(ps => BuildBoundProperty(ps, httpBinderType, recursionGuard, ctorParameterNames))]);
-        }
-        else if (!isCollection && scalarInfo.IsReferenceType && type is INamedTypeSymbol typeNamed)
-        {
-            children = new EquatableArray<BoundProperty>(
-                [.. GetAllViableProperties(typeNamed).Select(ps => BuildBoundProperty(ps, httpBinderType, recursionGuard, ctorParameterNames))]);
+            var referenceType = isCollection ? collectionElementType as INamedTypeSymbol : type as INamedTypeSymbol;
+
+            var properties = GetAllViableProperties(referenceType!)
+               .Select(ps => BuildBoundProperty(ps, httpBinderType, recursionGuard, ctorParameterNames))
+               .Where(bp => bp is not null)
+               .Select(bp => bp!)
+               .ToArray();
+
+            children = new EquatableArray<BoundProperty>(properties);
         }
 
         // Remove from recursion guard as we unwind.
@@ -132,7 +134,6 @@ internal static class BindingModelBuilder
             IsCollection: isCollection,
             IsConstructorParameter: ctorParameterNames.Contains(propertySymbol.Name),
             ScalarType: scalarInfo,
-            IsIgnored: false,
             ChildProperties: children);
     }
 }

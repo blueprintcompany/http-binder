@@ -80,15 +80,13 @@ internal static class CodeRenderer
         // 1. Generate locals for each property
         foreach (var property in model.Properties)
         {
-            if (property.IsIgnored) continue;
-
             GeneratePropertyBinding(indent, property);
             indent.AppendLine();
         }
 
         // Determine which properties must go into object initializer.
         var initOrSettableProperties = new EquatableArray<BoundProperty>(
-            [.. model.Properties.Where(p => !p.IsIgnored && !p.IsConstructorParameter)]);
+            [.. model.Properties.Where(p => !p.IsConstructorParameter)]);
 
         var ctorArgs = string.Join(", ", model.ConstructorParameterNames.Select(name => $"{name}: {BoundProperty.ToCamelCase(name)}"));
 
@@ -363,7 +361,7 @@ internal static class CodeRenderer
 
         void Walk(BoundProperty property)
         {
-            if (property.IsIgnored || property.IsFormFile)
+            if (property.IsFormFile)
                 return;
 
             if (property.IsReferenceType && emitted.Add(property.TypeName))
@@ -391,8 +389,6 @@ internal static class CodeRenderer
         // Locals
         foreach (var property in properties)
         {
-            if (property.IsIgnored) continue;
-
             if (property.IsCollection && !property.IsFormFile)
             {
                 var listType = $"global::System.Collections.Generic.List<{property.TypeName}>";

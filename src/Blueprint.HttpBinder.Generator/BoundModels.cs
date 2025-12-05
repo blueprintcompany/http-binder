@@ -14,22 +14,8 @@ internal sealed record BoundProperty(
     bool IsNullable,
     bool IsCollection,
     bool IsConstructorParameter,
-    bool IsIgnored,
     EquatableArray<BoundProperty> ChildProperties)
 {
-    public static BoundProperty Ignore(string name, HttpBinderType httpBinderType) =>
-        new(
-            Name: name,
-            KeyName: name,
-            DeclaredTypeName: name,
-            HttpBinderType: httpBinderType,
-            ScalarType: ScalarTypeInfo.Unknown,
-            IsNullable: false,
-            IsCollection: false,
-            IsConstructorParameter: false,
-            IsIgnored: true,
-            ChildProperties: []);
-
     public string CamelCaseName => ToCamelCase(Name);
     public string NonNullTypeName => IsNullable ? TypeName.TrimEnd('?') : TypeName;
     public string TypeName => ScalarType.TypeName;
@@ -43,9 +29,6 @@ internal sealed record BoundProperty(
 
     public bool UsesFormValues()
     {
-        if (IsIgnored)
-            return false;
-
         if (HttpBinderType == HttpBinderType.Form)
             return true;
 
@@ -95,9 +78,9 @@ internal sealed record BoundType(
     EquatableArray<BoundProperty> Properties,
     EquatableArray<string> ConstructorParameterNames)
 {
-    public bool UsesFormValues() => Properties.Any(p => !p.IsIgnored && p.UsesFormValues());
-    public bool UsesQueryValues() => Properties.Any(p => !p.IsIgnored && p.HttpBinderType == HttpBinderType.Query);
-    public bool UsesRouteValues() => Properties.Any(p => !p.IsIgnored && p.HttpBinderType == HttpBinderType.Route);
+    public bool UsesFormValues() => Properties.Any(p => p.UsesFormValues());
+    public bool UsesQueryValues() => Properties.Any(p => p.HttpBinderType == HttpBinderType.Query);
+    public bool UsesRouteValues() => Properties.Any(p => p.HttpBinderType == HttpBinderType.Route);
 }
 
 internal enum BoundTypeKind

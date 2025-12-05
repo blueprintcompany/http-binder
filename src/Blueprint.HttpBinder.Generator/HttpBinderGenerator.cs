@@ -67,9 +67,12 @@ namespace Blueprint.HttpBinder
                 ctorParameterNames = new EquatableArray<string>(names);
             }
 
-            var properties = new EquatableArray<BoundProperty>(
-                [.. BindingModelBuilder.GetAllViableProperties(typeSymbol)
-                    .Select(p => BindingModelBuilder.BuildBoundProperty(p, classHttpBinderType, [], ctorParameterNames))]);
+            var viableProperties = BindingModelBuilder.GetAllViableProperties(typeSymbol)
+                    .Select(p => BindingModelBuilder.BuildBoundProperty(p, classHttpBinderType, [], ctorParameterNames))
+                    .Where(bp => bp is not null)
+                    .Select(bp => bp!)
+                    .ToArray();
+            var properties = new EquatableArray<BoundProperty>(viableProperties);
 
             var @namespace = typeSymbol.ContainingNamespace?.ToDisplayString() ?? string.Empty;
             var isSingleFileProgram = @namespace == "<global namespace>";
