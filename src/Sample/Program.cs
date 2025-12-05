@@ -72,10 +72,11 @@ public partial class UserQueryRequest : PagedRequestBase
     public List<string> StringCollection { get; set; } = [];
     public NestedClass NestedClasses { get; set; } = new();
 
-    public partial class NestedClass
+    public class NestedClass
     {
         public string? NestedProperty { get; set; }
         public int OtherProperty { get; set; }
+
     }
 }
 

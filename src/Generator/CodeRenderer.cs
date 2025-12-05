@@ -377,16 +377,16 @@ internal static class CodeRenderer
         foreach (var p in model.Properties)
             Walk(p);
 
-        void Walk(BoundProperty p)
+        void Walk(BoundProperty property)
         {
-            if (p.IsIgnored || p.IsFormFile)
+            if (property.IsIgnored || property.IsFormFile)
                 return;
 
-            if (p.IsReferenceType && emitted.Add(p.TypeName))
-                RenderComplexHelper(indent, p.TypeName, p.ChildProperties);
+            if (property.IsReferenceType && emitted.Add(property.TypeName))
+                RenderComplexHelper(indent, property.TypeName, property.ChildProperties);
 
-            foreach (var c in p.ChildProperties)
-                Walk(c);
+            foreach (var childProperty in property.ChildProperties)
+                Walk(childProperty);
         }
     }
 
@@ -408,6 +408,8 @@ internal static class CodeRenderer
         foreach (var property in properties)
         {
             var local = property.CamelCaseName;
+
+            if (property.IsIgnored) continue;
 
             if (property.IsCollection && !property.IsFormFile)
             {

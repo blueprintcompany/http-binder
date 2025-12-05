@@ -120,6 +120,9 @@ internal static class BindingModelBuilder
             children = [.. GetAllViableProperties(typeNamed).Select(ps => BuildBoundProperty(ps, httpBinderType, recursionGuard))];
         }
 
+        // Remove from recursion guard as we unwind.
+        recursionGuard.Remove(declaredTypeName);
+
         return new BoundProperty(
             Name: propertySymbol.Name,
             KeyName: keyName,
