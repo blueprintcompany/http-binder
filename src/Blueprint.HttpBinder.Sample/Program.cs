@@ -9,7 +9,7 @@ var app = builder.Build();
 // UserQueryRequest parameter is bound by the generated BindAsync method
 // according to the attributes applied to its properties and inherited
 // properties from PagedRequestBase.
-app.MapPost("/users", async (UserQueryRequest req, HttpContext httpContext) =>
+app.MapPost("/users/{routeParameter:int}", async (UserQueryRequest req, HttpContext httpContext) =>
 {
     // Here you can access req.Page, req.PageSize, etc. which have
     // been bound from the query string and form. You might query a database or
@@ -18,10 +18,8 @@ app.MapPost("/users", async (UserQueryRequest req, HttpContext httpContext) =>
 
     return new UserQueryResponse
     {
-        FormFileCount = req.FormFile is null ? 0 : 1,
-        FormFilesCount = req.FormFiles?.Count ?? 0,
-        FormFileListCount = req.FormFileList?.Count ?? 0,
-
+        RouteParameter = req.RouteParameter,
+        InitOnlyProperty = req.InitOnlyProperty,
         IntProperty = req.IntProperty,
         BoolProperty = req.BoolProperty,
         NullableBoolProperty = req.NullableBoolProperty,
@@ -41,6 +39,10 @@ app.MapPost("/users", async (UserQueryRequest req, HttpContext httpContext) =>
         Page = req.Page,
         PageSize = req.PageSize,
 
+        FormFileCount = req.FormFile is null ? 0 : 1,
+        FormFilesCount = req.FormFiles?.Count ?? 0,
+        FormFileListCount = req.FormFileList?.Count ?? 0,
+
         NestedClassNestedProperty = req.NestedClasses?.NestedProperty,
         NestedClassOtherProperty = req.NestedClasses?.OtherProperty ?? 0
     };
@@ -51,6 +53,9 @@ app.Run();
 [HttpBinder(HttpBinderType = HttpBinderType.Form)]
 public partial class UserQueryRequest : PagedRequestBase
 {
+    [BindFrom(HttpBinderType.Route)]
+    public int RouteParameter { get; set; }
+    public int InitOnlyProperty { get; init; }
     public IFormFile? FormFile { get; set; } = null!;
     public IFormFileCollection FormFiles { get; set; } = null!;
     public List<IFormFile> FormFileList { get; set; } = [];
@@ -82,6 +87,8 @@ public partial class UserQueryRequest : PagedRequestBase
 
 public class UserQueryResponse
 {
+    public int RouteParameter { get; set; }
+    public int InitOnlyProperty { get; set; }
     public int FormFileCount { get; set; }
     public int FormFilesCount { get; set; }
     public int FormFileListCount { get; set; }

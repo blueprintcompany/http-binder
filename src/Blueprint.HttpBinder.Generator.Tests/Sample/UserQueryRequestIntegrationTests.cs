@@ -25,7 +25,7 @@ internal class UserQueryRequestIntegrationTests
     public async Task WhenPostingMultipartAndQuery_ThenBinderDeserializesCorrectly()
     {
         // Arrange query params
-        var url = "/users?some_guid=11111111-1111-1111-1111-111111111111"
+        var url = "/users/1?some_guid=11111111-1111-1111-1111-111111111111"
                 + "&Page=2&PageSize=50&Search=abc"
                 + "&IntCollection=10&IntCollection=20&IntCollection=30";
 
@@ -64,6 +64,7 @@ internal class UserQueryRequestIntegrationTests
             },
 
             // Primitive values (Form binder)
+            { new StringContent("1"), "InitOnlyProperty" },
             { new StringContent("42"), "IntProperty" },
             { new StringContent("Two"), "EnumProperty" },
             { new StringContent(""), "NullableEnumProperty" },
@@ -88,8 +89,10 @@ internal class UserQueryRequestIntegrationTests
 
         await Assert.That(result).IsNotNull();
 
-        // Assertions (TUnit)
-        await Assert.That(result!.FormFileCount).IsEqualTo(1);
+        // Assert
+        await Assert.That(result.RouteParameter).IsEqualTo(1);
+        await Assert.That(result.InitOnlyProperty).IsEqualTo(1);
+        await Assert.That(result.FormFileCount).IsEqualTo(1);
         await Assert.That(result.FormFilesCount).IsEqualTo(2);
         await Assert.That(result.FormFileListCount).IsEqualTo(2);
 
