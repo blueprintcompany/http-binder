@@ -1,6 +1,7 @@
 using Blueprint.HttpBinder;
 using Blueprint.HttpBinder.Sample;
 using Blueprint.HttpBinder.Sample.Enums;
+using static UserQueryRequest;
 
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
@@ -43,8 +44,16 @@ app.MapPost("/users/{routeParameter:int}", async (UserQueryRequest req, HttpCont
         FormFilesCount = req.FormFiles?.Count ?? 0,
         FormFileListCount = req.FormFileList?.Count ?? 0,
 
-        NestedClassNestedProperty = req.NestedClasses?.NestedProperty,
-        NestedClassOtherProperty = req.NestedClasses?.OtherProperty ?? 0
+        NestedClass = new()
+        {
+            NestedProperty = req.NestedClasses?.NestedProperty,
+            OtherProperty = req.NestedClasses?.OtherProperty ?? 0,
+        },
+        NestedClassList = req.NestedClassList.Select(nc => new NestedClass
+        {
+            NestedProperty = nc.NestedProperty,
+            OtherProperty = nc.OtherProperty,
+        }).ToList() ?? []
     };
 });
 
@@ -76,6 +85,7 @@ public partial class UserQueryRequest : PagedRequestBase
     public int[] IntCollection { get; set; } = [];
     public List<string> StringCollection { get; set; } = [];
     public NestedClass NestedClasses { get; set; } = new();
+    public List<NestedClass> NestedClassList { get; set; } = [];
 
     public class NestedClass
     {
@@ -112,8 +122,8 @@ public class UserQueryResponse
     public int[] IntCollection { get; set; } = [];
     public List<string> StringCollection { get; set; } = [];
 
-    public string? NestedClassNestedProperty { get; set; }
-    public int NestedClassOtherProperty { get; set; }
+    public NestedClass NestedClass { get; set; } = new();
+    public List<NestedClass> NestedClassList { get; set; } = [];
 
 }
 

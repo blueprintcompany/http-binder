@@ -316,13 +316,25 @@ internal static class CodeRenderer
     }
 
     private static void GenerateCollectionBinding(
-      IndentedStringBuilder indent,
-      BoundProperty property,
-      string local)
+        IndentedStringBuilder indent,
+        BoundProperty property,
+        string local)
     {
         if (property.HttpBinderType == HttpBinderType.Route)
         {
             indent.AppendLine($"// Collections cannot be bound from route values.");
+            return;
+        }
+
+        if (property.IsReferenceType)
+        {
+            if (property.HttpBinderType != HttpBinderType.Form)
+            {
+                indent.AppendLine("// Complex collections can only be bound from form values.");
+                return;
+            }
+
+            EmitRootComplexCollection(indent, property, local);
             return;
         }
 
@@ -344,7 +356,7 @@ internal static class CodeRenderer
         indent.AppendLine("{");
         indent.Indent();
 
-        EmitValueParser(indent, property, local, rawVar, true);
+        EmitValueParser(indent, property, local, rawVar, useAdd: true);
 
         indent.Unindent();
         indent.AppendLine("}");
@@ -494,8 +506,49 @@ internal static class CodeRenderer
             indent.AppendLine("if (form != null && form.TryGetValue(key, out var formValue) && formValue.Count > 0) " +
                               $"{raw} = formValue.ToString();");
 
-            EmitValueParser(indent, property, $"{local}[index] =", raw, false);
+            EmitValueParser(indent, property, $"{local}[index]", raw, false);
         }
+
+        indent.Unindent();
+        indent.AppendLine("}");
+    }
+
+    private static void EmitRootComplexCollection(
+     IndentedStringBuilder indent,
+     BoundProperty property,
+     string local)
+    {
+        // property.TypeName is the element type, e.g. NestedClassOuter.NestedClassInner
+        var keyName = property.KeyName;
+        var prefixVar = $"{local}Prefix";
+
+        // Prefix looks like: "NestedClassList["
+        indent.AppendLine($"var {prefixVar} = \"{keyName}[\";");
+
+        indent.AppendLine("foreach (var key in form.Keys)");
+        indent.AppendLine("{");
+        indent.Indent();
+
+        indent.AppendLine($"if (!key.StartsWith({prefixVar})) continue;");
+
+        indent.AppendLine($"var idxStart = {prefixVar}.Length;");
+        indent.AppendLine("var idxEnd = key.IndexOf(']', idxStart);");
+        indent.AppendLine("if (idxEnd < 0) continue;");
+
+        indent.AppendLine("var idxText = key.Substring(idxStart, idxEnd - idxStart);");
+        indent.AppendLine("if (!int.TryParse(idxText, out var index)) continue;");
+
+        // Ensure capacity
+        indent.AppendLine($"while ({local}.Count <= index) {local}.Add(default!);");
+
+        // Extract correct prefix *including trailing dot*:
+        // "NestedClassList[0]."
+        indent.AppendLine("var objPrefix = key.Substring(0, idxEnd + 1) + \".\";");
+
+        var nested = $"Bind_{Sanitize(property.TypeName)}";
+
+        // Bind the complex object using the correct prefix
+        indent.AppendLine($"{local}[index] = {nested}(http, objPrefix, form);");
 
         indent.Unindent();
         indent.AppendLine("}");

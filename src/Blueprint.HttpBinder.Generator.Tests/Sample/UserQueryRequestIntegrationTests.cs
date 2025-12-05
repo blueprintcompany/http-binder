@@ -77,6 +77,10 @@ internal class UserQueryRequestIntegrationTests
             { new StringContent("world"), "StringCollection" },
             { new StringContent(""), "NestedClasses.NestedProperty" },
             { new StringContent("123"), "NestedClasses.OtherProperty" },
+            { new StringContent("x"), "NestedClassList[0].NestedProperty" },
+            { new StringContent("1"), "NestedClassList[0].OtherProperty" },
+            { new StringContent("y"), "NestedClassList[1].NestedProperty" },
+            { new StringContent("2"), "NestedClassList[1].OtherProperty" },
         };
 
         // Act
@@ -121,10 +125,16 @@ internal class UserQueryRequestIntegrationTests
         await Assert.That(result.PageSize).IsEqualTo(50);
         await Assert.That(result.Search).IsEqualTo("abc");
 
-        await Assert.That(result.NestedClassNestedProperty).IsNull();
-        await Assert.That(result.NestedClassOtherProperty).IsEqualTo(123);
+        await Assert.That(result.NestedClass.NestedProperty).IsNull();
+        await Assert.That(result.NestedClass.OtherProperty).IsEqualTo(123);
 
         await Assert.That(result.StringCollection).IsEquivalentTo(["hello", "world"]);
         await Assert.That(result.IntCollection).IsEquivalentTo([10, 20, 30]);
+
+        await Assert.That(result.NestedClassList.Count).IsEqualTo(2);
+        await Assert.That(result.NestedClassList[0].NestedProperty).IsEqualTo("x");
+        await Assert.That(result.NestedClassList[0].OtherProperty).IsEqualTo(1);
+        await Assert.That(result.NestedClassList[1].NestedProperty).IsEqualTo("y");
+        await Assert.That(result.NestedClassList[1].OtherProperty).IsEqualTo(2);
     }
 }

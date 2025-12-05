@@ -31,7 +31,7 @@ public interface IUserFormCommandInterface
 [HttpBinder]
 public partial class NestedClassOuter
 {
-    public NestedClassInner NestedClasses { get; set; } = new();
+    public List<NestedClassInner> NestedClassList { get; set; } = [];
 
     public partial class NestedClassInner
     {
