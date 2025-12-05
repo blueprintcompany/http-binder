@@ -87,33 +87,16 @@ internal static class CodeRenderer
         }
 
         // Determine which properties must go into object initializer.
-        var initOrSettableProps = model.Properties
-            .Where(p => !p.IsIgnored && !p.IsConstructorParameter)
-            .ToList();
+        var initOrSettableProperties = new EquatableArray<BoundProperty>(
+            [.. model.Properties.Where(p => !p.IsIgnored && !p.IsConstructorParameter)]);
 
-        var ctorArgs = string.Join(", ",
-            model.ConstructorParameterNames.Select(name => $"{name}: {BoundProperty.ToCamelCase(name)}"));
+        var ctorArgs = string.Join(", ", model.ConstructorParameterNames.Select(name => $"{name}: {BoundProperty.ToCamelCase(name)}"));
 
-        // 2. Begin object initializer
         indent.AppendLine($"var instance = new {typeName}({ctorArgs})");
-
         indent.AppendLine("{");
         indent.Indent();
 
-        foreach (var p in initOrSettableProps)
-        {
-            // Collections inside initializer must use assignment expression
-            if (p.IsCollection && !p.IsFormFile)
-            {
-                var local = p.CamelCaseName;
-                var assignmentExpr = GetCollectionAssignmentExpression(p, local);
-                indent.AppendLine($"{p.Name} = {assignmentExpr},");
-            }
-            else
-            {
-                indent.AppendLine($"{p.Name} = {p.CamelCaseName},");
-            }
-        }
+        GeneratePropertyAssigments(indent, initOrSettableProperties);
 
         indent.Unindent();
         indent.AppendLine("};");
@@ -124,6 +107,23 @@ internal static class CodeRenderer
         indent.AppendLine("}");
     }
 
+    private static void GeneratePropertyAssigments(IndentedStringBuilder indent, EquatableArray<BoundProperty> properties)
+    {
+        foreach (var property in properties)
+        {
+            // Collections inside initializer must use assignment expression
+            if (property.IsCollection && !property.IsFormFile)
+            {
+                var local = property.CamelCaseName;
+                var assignmentExpr = GetCollectionAssignmentExpression(property, local);
+                indent.AppendLine($"{property.Name} = {assignmentExpr},");
+            }
+            else
+            {
+                indent.AppendLine($"{property.Name} = {property.CamelCaseName},");
+            }
+        }
+    }
 
     private static bool UsesForm(BoundType model) =>
         model.Properties.Any(UsesFormRecursive);
@@ -153,55 +153,51 @@ internal static class CodeRenderer
         IndentedStringBuilder indent,
         BoundProperty property)
     {
-        var name = property.Name;
-        var local = property.CamelCaseName;
         var elementType = property.TypeName;
 
-        EmitLocalDeclaration(indent, property, local, elementType);
+        EmitLocalDeclaration(indent, property, elementType);
 
-        // IFormFile / IFormFileCollection / List<IFormFile> – form-only
         if (property.IsFormFile)
         {
             if (property.HttpBinderType == HttpBinderType.Form)
             {
                 EmitFormFileBinding(indent, property);
             }
+
             // else: unsupported combination; leave as default/null
             return;
         }
 
-        // Collections
         if (property.IsCollection)
         {
-            GenerateCollectionBinding(indent, property, local);
+            GenerateCollectionBinding(indent, property, property.CamelCaseName);
             return;
         }
 
-        // Complex (non-collection) – only supported from Form
         if (property.IsReferenceType)
         {
             if (property.HttpBinderType == HttpBinderType.Form)
             {
-                EmitComplexCall(indent, property, local);
+                EmitComplexCall(indent, property, property.CamelCaseName);
             }
+
             // Query/Route complex binding is not supported; leave default
             return;
         }
 
         // Simple scalar value
-        EmitSimpleBinding(indent, property, local);
+        EmitSimpleBinding(indent, property, property.CamelCaseName);
     }
 
     private static void EmitLocalDeclaration(
         IndentedStringBuilder indent,
         BoundProperty property,
-        string local,
         string typeName)
     {
         // Root IFormFileCollection / List<IFormFile> – we let the binding logic assign.
         if (property.IsFormFile && property.IsCollection)
         {
-            indent.AppendLine($"{property.DeclaredTypeName} {local} = null!;");
+            indent.AppendLine($"{property.DeclaredTypeName} {property.CamelCaseName} = null!;");
             return;
         }
 
@@ -209,48 +205,47 @@ internal static class CodeRenderer
         if (property.IsCollection)
         {
             var listType = $"global::System.Collections.Generic.List<{typeName}>";
-            indent.AppendLine($"{listType} {local} = new {listType}();");
+            indent.AppendLine($"{listType} {property.CamelCaseName} = new {listType}();");
             return;
         }
 
         // Scalar IFormFile
         if (property.IsFormFile)
         {
-            indent.AppendLine($"{typeName} {local} = null!;");
+            indent.AppendLine($"{typeName} {property.CamelCaseName} = null!;");
             return;
         }
 
         // Complex scalar
         if (property.IsReferenceType && !property.IsNullable)
         {
-            indent.AppendLine($"{typeName} {local} = null!;");
+            indent.AppendLine($"{typeName} {property.CamelCaseName} = null!;");
             return;
         }
 
         // Nullable or string scalar
         if (property.IsNullable || property.IsString)
         {
-            indent.AppendLine($"{typeName} {local} = null!;");
+            indent.AppendLine($"{typeName} {property.CamelCaseName} = null!;");
             return;
         }
 
         // Non-nullable primitive / enum
-        indent.AppendLine($"{typeName} {local} = default;");
+        indent.AppendLine($"{typeName} {property.CamelCaseName} = default;");
     }
 
     private static void EmitFormFileBinding(IndentedStringBuilder indent, BoundProperty property)
     {
-        var local = property.CamelCaseName;
         var key = property.KeyName;
 
         // user declared "IFormFileCollection"
         if (property.DeclaredTypeName == "Microsoft.AspNetCore.Http.IFormFileCollection")
         {
             indent.AppendLine(
-                $"var {local}FileList = http.Request.Form.Files.GetFiles(\"{key}\");");
-            indent.AppendLine($"var {local}FileCollection = new FormFileCollection();");
-            indent.AppendLine($"foreach (var file in {local}FileList) {local}FileCollection.Add(file);");
-            indent.AppendLine($"{local} = {local}FileCollection;");
+                $"var {property.CamelCaseName}FileList = http.Request.Form.Files.GetFiles(\"{key}\");");
+            indent.AppendLine($"var {property.CamelCaseName}FileCollection = new FormFileCollection();");
+            indent.AppendLine($"foreach (var file in {property.CamelCaseName}FileList) {property.CamelCaseName}FileCollection.Add(file);");
+            indent.AppendLine($"{property.CamelCaseName} = {property.CamelCaseName}FileCollection;");
             return;
         }
 
@@ -258,12 +253,12 @@ internal static class CodeRenderer
         if (property.IsCollection)
         {
             indent.AppendLine(
-                $"{local} = new global::System.Collections.Generic.List<Microsoft.AspNetCore.Http.IFormFile>(http.Request.Form.Files.GetFiles(\"{key}\"));");
+                $"{property.CamelCaseName} = new global::System.Collections.Generic.List<Microsoft.AspNetCore.Http.IFormFile>(http.Request.Form.Files.GetFiles(\"{key}\"));");
             return;
         }
 
         // Scalar IFormFile
-        indent.AppendLine($"{local} = http.Request.Form.Files.GetFile(\"{key}\");");
+        indent.AppendLine($"{property.CamelCaseName} = http.Request.Form.Files.GetFile(\"{key}\");");
     }
 
     private static void EmitSimpleBinding(
@@ -273,7 +268,7 @@ internal static class CodeRenderer
     {
         var rawVar = $"{local}Raw";
         EmitValueAccessor(indent, property, rawVar);
-        EmitValueParser(indent, property, local, rawVar, false);
+        EmitValueParser(indent, property, property.CamelCaseName, rawVar, false);
     }
 
     private static void EmitValueAccessor(
@@ -420,22 +415,20 @@ internal static class CodeRenderer
         // Locals
         foreach (var property in properties)
         {
-            var local = property.CamelCaseName;
-
             if (property.IsIgnored) continue;
 
             if (property.IsCollection && !property.IsFormFile)
             {
                 var listType = $"global::System.Collections.Generic.List<{property.TypeName}>";
-                indent.AppendLine($"{listType} {local} = new {listType}();");
+                indent.AppendLine($"{listType} {property.CamelCaseName} = new {listType}();");
             }
             else if (property.IsNullable || property.IsString || property.IsFormFile)
             {
-                indent.AppendLine($"{property.TypeName} {local} = null!;");
+                indent.AppendLine($"{property.TypeName} {property.CamelCaseName} = null!;");
             }
             else
             {
-                indent.AppendLine($"{property.TypeName} {local} = default;");
+                indent.AppendLine($"{property.TypeName} {property.CamelCaseName} = default;");
             }
         }
 
@@ -470,24 +463,16 @@ internal static class CodeRenderer
             indent.AppendLine();
         }
 
-        indent.AppendLine($"var instance = new {typeName}();");
+        indent.AppendLine($"var instance = new {typeName}");
+        indent.AppendLine("{");
+        indent.Indent();
 
-        foreach (var property in properties)
-        {
-            var local = property.CamelCaseName;
+        GeneratePropertyAssigments(indent, properties);
 
-            if (property.IsCollection && !property.IsFormFile)
-            {
-                var assignmentExpr = GetCollectionAssignmentExpression(property, local);
-                indent.AppendLine($"instance.{property.Name} = {assignmentExpr};");
-            }
-            else
-            {
-                indent.AppendLine($"instance.{property.Name} = {local};");
-            }
-        }
-
+        indent.Unindent();
+        indent.AppendLine("};");
         indent.AppendLine("return instance;");
+
         indent.Unindent();
         indent.AppendLine("}");
     }

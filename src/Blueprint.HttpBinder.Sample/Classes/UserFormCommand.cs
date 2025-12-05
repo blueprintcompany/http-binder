@@ -37,6 +37,6 @@ public partial class NestedClassOuter
     {
         public decimal DecimalProperty { get; set; }
         public decimal DecimalProperty2 { get; set; }
-
+        public decimal InitOnlyProperty { get; init; }
     }
 }
