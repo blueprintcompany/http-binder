@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace Blueprint.HttpBinder;
 
 //// <summary>
@@ -39,6 +41,21 @@ internal sealed record BoundProperty(
     public bool IsValueType => ScalarType.IsValueType;
     public bool IsReferenceType => ScalarType.IsReferenceType;
 
+    public bool UsesFormValues()
+    {
+        if (IsIgnored)
+            return false;
+
+        if (HttpBinderType == HttpBinderType.Form)
+            return true;
+
+        foreach (var childProperty in ChildProperties)
+            if (childProperty.UsesFormValues())
+                return true;
+
+        return false;
+    }
+
     public static string ToCamelCase(string str) => char.ToLowerInvariant(str[0]) + str.Substring(1);
 
     public string GetTryParseMethod() =>
@@ -76,7 +93,12 @@ internal sealed record BoundType(
     BoundTypeKind Kind,
     HttpBinderType ClassHttpBinderType,
     EquatableArray<BoundProperty> Properties,
-    EquatableArray<string> ConstructorParameterNames);
+    EquatableArray<string> ConstructorParameterNames)
+{
+    public bool UsesFormValues() => Properties.Any(p => !p.IsIgnored && p.UsesFormValues());
+    public bool UsesQueryValues() => Properties.Any(p => !p.IsIgnored && p.HttpBinderType == HttpBinderType.Query);
+    public bool UsesRouteValues() => Properties.Any(p => !p.IsIgnored && p.HttpBinderType == HttpBinderType.Route);
+}
 
 internal enum BoundTypeKind
 {

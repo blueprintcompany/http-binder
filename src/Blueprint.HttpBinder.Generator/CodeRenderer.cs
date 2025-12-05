@@ -55,9 +55,9 @@ internal static class CodeRenderer
     private static void RenderBindMethod(IndentedStringBuilder indent, BoundType model)
     {
         var typeName = model.FullName;
-        var usesForm = UsesForm(model);
-        var usesQuery = UsesQueryAtRoot(model);
-        var usesRoute = UsesRouteAtRoot(model);
+        var usesForm = model.UsesFormValues();
+        var usesQuery = model.UsesQueryValues();
+        var usesRoute = model.UsesRouteValues();
 
         indent.AppendLine($"public static async global::System.Threading.Tasks.ValueTask<{typeName}> BindAsync(");
         indent.AppendLine("    global::Microsoft.AspNetCore.Http.HttpContext http)");
@@ -124,30 +124,6 @@ internal static class CodeRenderer
             }
         }
     }
-
-    private static bool UsesForm(BoundType model) =>
-        model.Properties.Any(UsesFormRecursive);
-
-    private static bool UsesFormRecursive(BoundProperty property)
-    {
-        if (property.IsIgnored)
-            return false;
-
-        if (property.HttpBinderType == HttpBinderType.Form)
-            return true;
-
-        foreach (var childProperty in property.ChildProperties)
-            if (UsesFormRecursive(childProperty))
-                return true;
-
-        return false;
-    }
-
-    private static bool UsesQueryAtRoot(BoundType model) =>
-        model.Properties.Any(p => !p.IsIgnored && p.HttpBinderType == HttpBinderType.Query);
-
-    private static bool UsesRouteAtRoot(BoundType model) =>
-        model.Properties.Any(p => !p.IsIgnored && p.HttpBinderType == HttpBinderType.Route);
 
     private static void GeneratePropertyBinding(
         IndentedStringBuilder indent,
