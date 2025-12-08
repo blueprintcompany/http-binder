@@ -126,14 +126,14 @@ internal static class BindingModelBuilder
         recursionGuard.Remove(declaredTypeName);
 
         return new BoundProperty(
-            Name: propertySymbol.Name,
-            KeyName: keyName,
-            DeclaredTypeName: declaredTypeName,
-            HttpBinderType: httpBinderType,
-            IsNullable: isNullable,
-            IsCollection: isCollection,
-            IsConstructorParameter: ctorParameterNames.Contains(propertySymbol.Name),
-            ScalarType: scalarInfo,
-            ChildProperties: children);
+            propertySymbol.Name,
+            keyName,
+            declaredTypeName,
+            httpBinderType,
+            scalarInfo,
+            isNullable,
+            isCollection,
+            ctorParameterNames.Contains(propertySymbol.Name),
+            children);
     }
 }

@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis.CSharp;
 using System.Linq;
 
 namespace Blueprint.HttpBinder;
@@ -5,19 +6,57 @@ namespace Blueprint.HttpBinder;
 //// <summary>
 /// Represents a single property that will be bound at runtime. This model must remain equatable for Roslyn to perform incremental caching.
 /// </summary>
-internal sealed record BoundProperty(
-    string Name,
-    string KeyName,
-    string DeclaredTypeName,
-    HttpBinderType HttpBinderType,
-    ScalarTypeInfo ScalarType,
-    bool IsNullable,
-    bool IsCollection,
-    bool IsConstructorParameter,
-    EquatableArray<BoundProperty> ChildProperties)
+internal sealed record BoundProperty
 {
-    public string CamelCaseName => ToCamelCase(Name);
-    public string NonNullTypeName => IsNullable ? TypeName.TrimEnd('?') : TypeName;
+    public BoundProperty(
+        string name,
+        string keyName,
+        string declaredTypeName,
+        HttpBinderType httpBinderType,
+        ScalarTypeInfo scalarType,
+        bool isNullable,
+        bool isCollection,
+        bool isConstructorParameter,
+        EquatableArray<BoundProperty> childProperties)
+    {
+        var isKeywordName = SyntaxFacts.GetKeywordKind(name.ToLower()) != SyntaxKind.None;
+        if (isKeywordName)
+        {
+            CamelCaseName = "@" + ToCamelCase(name);
+            Name = "@" + name;
+        }
+        else
+        {
+            CamelCaseName = ToCamelCase(name);
+            Name = name;
+        }
+
+        var isKeywordKeyName = SyntaxFacts.GetKeywordKind(keyName.ToLower()) != SyntaxKind.None;
+        KeyName = isKeywordKeyName ? "@" + keyName : keyName;
+
+        DeclaredTypeName = declaredTypeName;
+        HttpBinderType = httpBinderType;
+        ScalarType = scalarType;
+        IsNullable = isNullable;
+        IsCollection = isCollection;
+        IsConstructorParameter = isConstructorParameter;
+        ChildProperties = childProperties;
+        NonNullTypeName = IsNullable ? TypeName.TrimEnd('?') : TypeName;
+
+    }
+
+    public string Name { get; init; }
+    public string KeyName { get; init; }
+    public string DeclaredTypeName { get; init; }
+    public HttpBinderType HttpBinderType { get; init; }
+    public ScalarTypeInfo ScalarType { get; init; }
+    public bool IsNullable { get; init; }
+    public bool IsCollection { get; init; }
+    public bool IsConstructorParameter { get; init; }
+    public EquatableArray<BoundProperty> ChildProperties { get; init; }
+
+    public string CamelCaseName { get; init; }
+    public string NonNullTypeName { get; init; }
     public string TypeName => ScalarType.TypeName;
     public bool IsEnum => ScalarType.IsEnum;
     public bool IsGuid => ScalarType.IsGuid;

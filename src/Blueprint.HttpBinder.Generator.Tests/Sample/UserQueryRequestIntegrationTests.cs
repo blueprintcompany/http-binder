@@ -69,6 +69,7 @@ internal class UserQueryRequestIntegrationTests
             { new StringContent(""), "NullableEnumProperty" },
             { new StringContent("true"), "BoolProperty" },
             { new StringContent(""), "NullableBoolProperty" },
+            { new StringContent("operator"), "Operator" },
             { new StringContent("2024-01-01T12:00:00Z"), "NullableDateTime" },
             { new StringContent("2024-01-02T15:30:00Z"), "NullableDateTimeOffset" },
             { new StringContent("2024-03-01T00:00:00Z"), "DateTime" },
@@ -98,6 +99,8 @@ internal class UserQueryRequestIntegrationTests
         await Assert.That(result.FormFileCount).IsEqualTo(1);
         await Assert.That(result.FormFilesCount).IsEqualTo(2);
         await Assert.That(result.FormFileListCount).IsEqualTo(2);
+
+        await Assert.That(result.Operator).IsEqualTo("operator");
 
         await Assert.That(result.BoolProperty).IsTrue();
         await Assert.That(result.NullableBoolProperty).IsNull();

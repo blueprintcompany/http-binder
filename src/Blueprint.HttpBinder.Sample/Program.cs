@@ -24,7 +24,7 @@ app.MapPost("/users/{routeParam:int}", async (UserQueryRequest req, HttpContext 
         IntProperty = req.IntProperty,
         BoolProperty = req.BoolProperty,
         NullableBoolProperty = req.NullableBoolProperty,
-
+        Operator = req.Operator,
         GuidProperty = req.GuidProperty,
         EnumProperty = req.EnumProperty,
         NullableEnumProperty = req.NullableEnumProperty,
@@ -86,6 +86,7 @@ public partial class UserQueryRequest : PagedRequestBase
     public List<string> StringCollection { get; set; } = [];
     public NestedClass NestedClasses { get; set; } = new();
     public List<NestedClass> NestedClassList { get; set; } = [];
+    public string? Operator { get; set; }
 
     public class NestedClass
     {
@@ -99,10 +100,7 @@ public class UserQueryResponse
 {
     public int RouteParameter { get; set; }
     public int InitOnlyProperty { get; set; }
-    public int FormFileCount { get; set; }
-    public int FormFilesCount { get; set; }
-    public int FormFileListCount { get; set; }
-
+    public string? Operator { get; set; }
     public int IntProperty { get; set; }
     public bool BoolProperty { get; set; }
     public bool? NullableBoolProperty { get; set; }
@@ -120,6 +118,10 @@ public class UserQueryResponse
     public int Page { get; set; }
     public int PageSize { get; set; }
     public int[] IntCollection { get; set; } = [];
+    public int FormFileCount { get; set; }
+    public int FormFilesCount { get; set; }
+    public int FormFileListCount { get; set; }
+
     public List<string> StringCollection { get; set; } = [];
 
     public NestedClass NestedClass { get; set; } = new();
