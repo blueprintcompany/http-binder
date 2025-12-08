@@ -10,7 +10,7 @@ var app = builder.Build();
 // UserQueryRequest parameter is bound by the generated BindAsync method
 // according to the attributes applied to its properties and inherited
 // properties from PagedRequestBase.
-app.MapPost("/users/{routeParameter:int}", async (UserQueryRequest req, HttpContext httpContext) =>
+app.MapPost("/users/{routeParam:int}", async (UserQueryRequest req, HttpContext httpContext) =>
 {
     // Here you can access req.Page, req.PageSize, etc. which have
     // been bound from the query string and form. You might query a database or
@@ -62,7 +62,7 @@ app.Run();
 [HttpBinder(HttpBinderType = HttpBinderType.Form)]
 public partial class UserQueryRequest : PagedRequestBase
 {
-    [BindFrom(HttpBinderType.Route)]
+    [BindFrom(HttpBinderType.Route, Name = "routeParam")]
     public int RouteParameter { get; set; }
     public int InitOnlyProperty { get; init; }
     public IFormFile? FormFile { get; set; } = null!;
