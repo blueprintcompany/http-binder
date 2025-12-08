@@ -112,13 +112,13 @@ internal static class CodeRenderer
             // Collections inside initializer must use assignment expression
             if (property.IsCollection && !property.IsFormFile)
             {
-                var local = property.CamelCaseName;
+                var local = property.SafeCamelCaseName;
                 var assignmentExpr = GetCollectionAssignmentExpression(property, local);
                 indent.AppendLine($"{property.Name} = {assignmentExpr},");
             }
             else
             {
-                indent.AppendLine($"{property.Name} = {property.CamelCaseName},");
+                indent.AppendLine($"{property.Name} = {property.SafeCamelCaseName},");
             }
         }
     }
@@ -168,7 +168,7 @@ internal static class CodeRenderer
         // Root IFormFileCollection / List<IFormFile> – we let the binding logic assign.
         if (property.IsFormFile && property.IsCollection)
         {
-            indent.AppendLine($"{property.DeclaredTypeName} {property.CamelCaseName} = null!;");
+            indent.AppendLine($"{property.DeclaredTypeName} {property.SafeCamelCaseName} = null!;");
             return;
         }
 
@@ -176,33 +176,33 @@ internal static class CodeRenderer
         if (property.IsCollection)
         {
             var listType = $"global::System.Collections.Generic.List<{property.TypeName}>";
-            indent.AppendLine($"{listType} {property.CamelCaseName} = new {listType}();");
+            indent.AppendLine($"{listType} {property.SafeCamelCaseName} = new {listType}();");
             return;
         }
 
         // Scalar IFormFile
         if (property.IsFormFile)
         {
-            indent.AppendLine($"{property.TypeName} {property.CamelCaseName} = null!;");
+            indent.AppendLine($"{property.TypeName} {property.SafeCamelCaseName} = null!;");
             return;
         }
 
         // Complex scalar
         if (property.IsReferenceType && !property.IsNullable)
         {
-            indent.AppendLine($"{property.TypeName} {property.CamelCaseName} = null!;");
+            indent.AppendLine($"{property.TypeName} {property.SafeCamelCaseName} = null!;");
             return;
         }
 
         // Nullable or string scalar
         if (property.IsNullable || property.IsString)
         {
-            indent.AppendLine($"{property.TypeName} {property.CamelCaseName} = null!;");
+            indent.AppendLine($"{property.TypeName} {property.SafeCamelCaseName} = null!;");
             return;
         }
 
         // Non-nullable primitive / enum
-        indent.AppendLine($"{property.TypeName} {property.CamelCaseName} = default;");
+        indent.AppendLine($"{property.TypeName} {property.SafeCamelCaseName} = default;");
     }
 
     private static void EmitFormFileBinding(IndentedStringBuilder indent, BoundProperty property)
@@ -213,10 +213,10 @@ internal static class CodeRenderer
         if (property.DeclaredTypeName == "Microsoft.AspNetCore.Http.IFormFileCollection")
         {
             indent.AppendLine(
-                $"var {property.CamelCaseName}FileList = http.Request.Form.Files.GetFiles(\"{key}\");");
-            indent.AppendLine($"var {property.CamelCaseName}FileCollection = new FormFileCollection();");
-            indent.AppendLine($"foreach (var file in {property.CamelCaseName}FileList) {property.CamelCaseName}FileCollection.Add(file);");
-            indent.AppendLine($"{property.CamelCaseName} = {property.CamelCaseName}FileCollection;");
+                $"var {property.SafeCamelCaseName}FileList = http.Request.Form.Files.GetFiles(\"{key}\");");
+            indent.AppendLine($"var {property.SafeCamelCaseName}FileCollection = new FormFileCollection();");
+            indent.AppendLine($"foreach (var file in {property.SafeCamelCaseName}FileList) {property.SafeCamelCaseName}FileCollection.Add(file);");
+            indent.AppendLine($"{property.SafeCamelCaseName} = {property.SafeCamelCaseName}FileCollection;");
             return;
         }
 
@@ -224,21 +224,21 @@ internal static class CodeRenderer
         if (property.IsCollection)
         {
             indent.AppendLine(
-                $"{property.CamelCaseName} = new global::System.Collections.Generic.List<Microsoft.AspNetCore.Http.IFormFile>(http.Request.Form.Files.GetFiles(\"{key}\"));");
+                $"{property.SafeCamelCaseName} = new global::System.Collections.Generic.List<Microsoft.AspNetCore.Http.IFormFile>(http.Request.Form.Files.GetFiles(\"{key}\"));");
             return;
         }
 
         // Scalar IFormFile
-        indent.AppendLine($"{property.CamelCaseName} = http.Request.Form.Files.GetFile(\"{key}\");");
+        indent.AppendLine($"{property.SafeCamelCaseName} = http.Request.Form.Files.GetFile(\"{key}\");");
     }
 
     private static void EmitSimpleBinding(
         IndentedStringBuilder indent,
         BoundProperty property)
     {
-        var rawVar = $"{property.CamelCaseName}Raw";
+        var rawVar = $"{property.SafeCamelCaseName}Raw";
         EmitValueAccessor(indent, property, rawVar);
-        EmitValueParser(indent, property, property.CamelCaseName, rawVar, false);
+        EmitValueParser(indent, property, property.SafeCamelCaseName, rawVar, false);
     }
 
     private static void EmitValueAccessor(
@@ -247,7 +247,7 @@ internal static class CodeRenderer
         string rawVar)
     {
         var key = property.KeyName;
-        var local = property.CamelCaseName;
+        var local = property.SafeCamelCaseName;
 
         switch (property.HttpBinderType)
         {
@@ -307,7 +307,7 @@ internal static class CodeRenderer
     {
         // Only used for HttpBinderType.Form
         var helper = $"Bind_{Sanitize(property.TypeName)}";
-        indent.AppendLine($"{property.CamelCaseName} = {helper}(http, \"{property.KeyName}.\", form);");
+        indent.AppendLine($"{property.SafeCamelCaseName} = {helper}(http, \"{property.KeyName}.\", form);");
     }
 
     private static void GenerateCollectionBinding(
@@ -350,7 +350,7 @@ internal static class CodeRenderer
         indent.AppendLine("{");
         indent.Indent();
 
-        EmitValueParser(indent, property, property.CamelCaseName, rawVar, useAdd: true);
+        EmitValueParser(indent, property, property.SafeCamelCaseName, rawVar, useAdd: true);
 
         indent.Unindent();
         indent.AppendLine("}");
@@ -398,15 +398,15 @@ internal static class CodeRenderer
             if (property.IsCollection && !property.IsFormFile)
             {
                 var listType = $"global::System.Collections.Generic.List<{property.TypeName}>";
-                indent.AppendLine($"{listType} {property.CamelCaseName} = new {listType}();");
+                indent.AppendLine($"{listType} {property.SafeCamelCaseName} = new {listType}();");
             }
             else if (property.IsNullable || property.IsString || property.IsFormFile)
             {
-                indent.AppendLine($"{property.TypeName} {property.CamelCaseName} = null!;");
+                indent.AppendLine($"{property.TypeName} {property.SafeCamelCaseName} = null!;");
             }
             else
             {
-                indent.AppendLine($"{property.TypeName} {property.CamelCaseName} = default;");
+                indent.AppendLine($"{property.TypeName} {property.SafeCamelCaseName} = default;");
             }
         }
 
@@ -415,7 +415,7 @@ internal static class CodeRenderer
         // Binding logic for each child property (form-only)
         foreach (var property in properties)
         {
-            var local = property.CamelCaseName;
+            var local = property.SafeCamelCaseName;
             var keyVar = $"{local}Key";
             indent.AppendLine($"var {keyVar} = prefix + \"{property.KeyName}\";");
 
@@ -512,7 +512,7 @@ internal static class CodeRenderer
      BoundProperty property)
     {
         var keyName = property.KeyName;
-        var prefixVar = $"{property.CamelCaseName}Prefix";
+        var prefixVar = $"{property.SafeCamelCaseName}Prefix";
 
         // Prefix looks like: "NestedClassList["
         indent.AppendLine($"var {prefixVar} = \"{keyName}[\";");
@@ -531,7 +531,7 @@ internal static class CodeRenderer
         indent.AppendLine("if (!int.TryParse(idxText, out var index)) continue;");
 
         // Ensure capacity
-        indent.AppendLine($"while ({property.CamelCaseName}.Count <= index) {property.CamelCaseName}.Add(default!);");
+        indent.AppendLine($"while ({property.SafeCamelCaseName}.Count <= index) {property.SafeCamelCaseName}.Add(default!);");
 
         // Extract correct prefix *including trailing dot*:
         // "NestedClassList[0]."
@@ -540,7 +540,7 @@ internal static class CodeRenderer
         var nested = $"Bind_{Sanitize(property.TypeName)}";
 
         // Bind the complex object using the correct prefix
-        indent.AppendLine($"{property.CamelCaseName}[index] = {nested}(http, objPrefix, form);");
+        indent.AppendLine($"{property.SafeCamelCaseName}[index] = {nested}(http, objPrefix, form);");
 
         indent.Unindent();
         indent.AppendLine("}");

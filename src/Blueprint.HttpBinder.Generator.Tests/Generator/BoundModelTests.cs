@@ -36,27 +36,11 @@ public sealed class BoundPropertyTests
         );
     }
 
-    [Test, Arguments("class", "@class"),
-        Arguments("Operator", "@Operator")]
-    public async Task GivenKeywordName_WhenConstructed_ThenNameIsEscaped(string value, string expectedValue)
-    {
-        var p = Create(name: value);
-        await Assert.That(p.Name).IsEqualTo(expectedValue);
-    }
-
-    [Test]
-    [Arguments("class", "@class"), Arguments("operator", "@operator")]
-    public async Task GivenKeywordName_WhenConstructed_ThenKeyNameIsEscaped(string value, string expectedValue)
-    {
-        var p = Create(keyName: value);
-        await Assert.That(p.KeyName).IsEqualTo(expectedValue);
-    }
-
     [Test, Arguments("Operator", "@operator")]
     public async Task GivenKeywordName_WhenConstructed_ThenCamelCaseNameIsEscaped(string value, string expectedValue)
     {
         var p = Create(name: value);
-        await Assert.That(p.CamelCaseName).IsEqualTo(expectedValue);
+        await Assert.That(p.SafeCamelCaseName).IsEqualTo(expectedValue);
     }
 
     [Test]
@@ -70,7 +54,7 @@ public sealed class BoundPropertyTests
     public async Task GivenName_WhenConstructed_ThenCamelCaseNameComputed()
     {
         var p = Create(name: "FirstName");
-        await Assert.That(p.CamelCaseName).IsEqualTo("firstName");
+        await Assert.That(p.SafeCamelCaseName).IsEqualTo("@firstName");
     }
 
     [Test]

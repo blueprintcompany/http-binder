@@ -1,4 +1,3 @@
-using Microsoft.CodeAnalysis.CSharp;
 using System.Linq;
 
 namespace Blueprint.HttpBinder;
@@ -19,21 +18,9 @@ internal sealed record BoundProperty
         bool isConstructorParameter,
         EquatableArray<BoundProperty> childProperties)
     {
-        var isKeywordName = SyntaxFacts.GetKeywordKind(name.ToLower()) != SyntaxKind.None;
-        if (isKeywordName)
-        {
-            CamelCaseName = "@" + ToCamelCase(name);
-            Name = "@" + name;
-        }
-        else
-        {
-            CamelCaseName = ToCamelCase(name);
-            Name = name;
-        }
-
-        var isKeywordKeyName = SyntaxFacts.GetKeywordKind(keyName.ToLower()) != SyntaxKind.None;
-        KeyName = isKeywordKeyName ? "@" + keyName : keyName;
-
+        Name = name;
+        SafeCamelCaseName = "@" + ToCamelCase(Name);
+        KeyName = keyName;
         DeclaredTypeName = declaredTypeName;
         HttpBinderType = httpBinderType;
         ScalarType = scalarType;
@@ -41,8 +28,6 @@ internal sealed record BoundProperty
         IsCollection = isCollection;
         IsConstructorParameter = isConstructorParameter;
         ChildProperties = childProperties;
-        NonNullTypeName = IsNullable ? TypeName.TrimEnd('?') : TypeName;
-
     }
 
     public string Name { get; init; }
@@ -55,8 +40,8 @@ internal sealed record BoundProperty
     public bool IsConstructorParameter { get; init; }
     public EquatableArray<BoundProperty> ChildProperties { get; init; }
 
-    public string CamelCaseName { get; init; }
-    public string NonNullTypeName { get; init; }
+    public string SafeCamelCaseName { get; init; }
+    public string NonNullTypeName => IsNullable ? TypeName.TrimEnd('?') : TypeName;
     public string TypeName => ScalarType.TypeName;
     public bool IsEnum => ScalarType.IsEnum;
     public bool IsGuid => ScalarType.IsGuid;
