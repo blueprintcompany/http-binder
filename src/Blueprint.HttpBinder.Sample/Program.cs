@@ -10,11 +10,11 @@ var app = builder.Build();
 // UserQueryRequest parameter is bound by the generated BindAsync method
 // according to the attributes applied to its properties and inherited
 // properties from PagedRequestBase.
-app.MapPost("/users/{routeParam:int}", async (UserQueryRequest req, HttpContext httpContext) =>
+app.MapPost("/users/{routeParam:int}", async (UserQueryRequest req) =>
 {
     // Here you can access req.Page, req.PageSize, etc. which have
     // been bound from the query string and form. You might query a database or
-    // otherwise handle the request. For demonstration we simply return
+    // otherwise handle the request. For demonstration, we simply return
     // the bound object.
 
     return new UserQueryResponse
@@ -28,32 +28,28 @@ app.MapPost("/users/{routeParam:int}", async (UserQueryRequest req, HttpContext 
         GuidProperty = req.GuidProperty,
         EnumProperty = req.EnumProperty,
         NullableEnumProperty = req.NullableEnumProperty,
-
         NullableDateTime = req.NullableDateTime,
         NullableDateTimeOffset = req.NullableDateTimeOffset,
         DateTime = req.DateTime,
         DateTimeOffset = req.DateTimeOffset,
         StringCollection = req.StringCollection,
-
         IntCollection = req.IntCollection,
         Search = req.Search,
         Page = req.Page,
         PageSize = req.PageSize,
-
         FormFileCount = req.FormFile is null ? 0 : 1,
-        FormFilesCount = req.FormFiles?.Count ?? 0,
-        FormFileListCount = req.FormFileList?.Count ?? 0,
-
+        FormFilesCount = req.FormFiles.Count,
+        FormFileListCount = req.FormFileList.Count,
         NestedClass = new()
         {
-            NestedProperty = req.NestedClasses?.NestedProperty,
-            OtherProperty = req.NestedClasses?.OtherProperty ?? 0,
+            NestedProperty = req.NestedClasses.NestedProperty,
+            OtherProperty = req.NestedClasses.OtherProperty,
         },
         NestedClassList = req.NestedClassList.Select(nc => new NestedClass
         {
             NestedProperty = nc.NestedProperty,
             OtherProperty = nc.OtherProperty,
-        }).ToList() ?? []
+        }).ToList()
     };
 });
 
@@ -65,7 +61,7 @@ public partial class UserQueryRequest : PagedRequestBase
     [BindFrom(HttpBinderType.Route, Name = "routeParam")]
     public int RouteParameter { get; set; }
     public int InitOnlyProperty { get; init; }
-    public IFormFile? FormFile { get; set; } = null!;
+    public IFormFile? FormFile { get; set; }
     public IFormFileCollection FormFiles { get; set; } = null!;
     public List<IFormFile> FormFileList { get; set; } = [];
     public int IntProperty { get; set; }
@@ -93,7 +89,6 @@ public partial class UserQueryRequest : PagedRequestBase
         public string? NestedProperty { get; set; }
         public int OtherProperty { get; set; }
         public List<string> NestedStringCollection { get; set; } = [];
-
     }
 }
 
@@ -114,7 +109,6 @@ public class UserQueryResponse
     public DateTimeOffset? NullableDateTimeOffset { get; set; }
     public DateTime DateTime { get; set; }
     public DateTimeOffset? DateTimeOffset { get; set; }
-
     public string? Search { get; set; }
     public int Page { get; set; }
     public int PageSize { get; set; }
@@ -122,13 +116,9 @@ public class UserQueryResponse
     public int FormFileCount { get; set; }
     public int FormFilesCount { get; set; }
     public int FormFileListCount { get; set; }
-
     public List<string> StringCollection { get; set; } = [];
-
     public NestedClass NestedClass { get; set; } = new();
     public List<NestedClass> NestedClassList { get; set; } = [];
-
 }
-
 
 public partial class Program { }
