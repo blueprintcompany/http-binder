@@ -59,7 +59,7 @@ app.MapPost("/users/{routeParam:int}", async (UserQueryRequest req, HttpContext 
 
 app.Run();
 
-[HttpBinder(HttpBinderType = HttpBinderType.Form)]
+[HttpBinder]
 public partial class UserQueryRequest : PagedRequestBase
 {
     [BindFrom(HttpBinderType.Route, Name = "routeParam")]

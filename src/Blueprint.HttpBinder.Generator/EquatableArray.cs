@@ -14,7 +14,7 @@ namespace Blueprint.HttpBinder;
 /// </remarks>
 /// <param name="array">The input <see cref="ImmutableArray{T}"/> to wrap.</param>
 internal readonly struct EquatableArray<T>(T[] array) : IEquatable<EquatableArray<T>>, IReadOnlyCollection<T>
-    where T : IEquatable<T>
+    where T : IEquatable<T>?
 {
     /// <summary>
     /// The underlying <typeparamref name="T"/> array.
@@ -30,13 +30,13 @@ internal readonly struct EquatableArray<T>(T[] array) : IEquatable<EquatableArra
     /// <sinheritdoc/>
     public override bool Equals(object? obj)
     {
-        return obj is EquatableArray<T> array && this.Equals(array);
+        return obj is EquatableArray<T> array && Equals(array);
     }
 
     /// <sinheritdoc/>
     public override int GetHashCode()
     {
-        if (_array is not T[] array)
+        if (_array is not {} array)
         {
             return 0;
         }

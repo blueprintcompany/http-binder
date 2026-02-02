@@ -10,7 +10,7 @@ internal class NestedCollectionsNotSupportedAnalyzerTests
     [Test]
     public async Task GivenANestedCollectionProperty_ThenShowsDiagnostic()
     {
-        var code = TestHelpers.GetTestCode($$"""
+        var code = TestHelpers.GetTestCode("""
             [HttpBinder]
             public partial class UserQueryRequest
             {

@@ -1,5 +1,4 @@
 ﻿using Blueprint.HttpBinder.Extensions;
-using Microsoft.CodeAnalysis;
 using static Blueprint.HttpBinder.Generator.Tests.Generator.TestHelpers;
 
 namespace Blueprint.HttpBinder.Generator.Tests.Generator.Extensions;
@@ -10,21 +9,21 @@ public class AttributeDataExtensionsTests
     [Test]
     public async Task TryGetBinderType_WhenNamedArgPresent_ThenReturnsTrueAndParsesEnum()
     {
-        var code = """
-            public enum HttpBinderType
-            {
-                Form,
-                Query,
-                Route
-            }
-            public class HttpBinderAttribute : System.Attribute
-            {
-                public HttpBinderType HttpBinderType { get; set; }
-            }
+        const string code = """
+                                public enum HttpBinderType
+                                {
+                                    Form,
+                                    Query,
+                                    Route
+                                }
+                                public class HttpBinderAttribute : System.Attribute
+                                {
+                                    public HttpBinderType HttpBinderType { get; set; }
+                                }
 
-            [HttpBinder(HttpBinderType = HttpBinderType.Query)]
-            public class T {}
-        """;
+                                [HttpBinder(HttpBinderType = HttpBinderType.Query)]
+                                public class T {}
+                            """;
 
         var symbol = GetTestSymbol(code, "T");
         var attr = symbol.GetAttributes().Single(a =>
@@ -39,14 +38,14 @@ public class AttributeDataExtensionsTests
     [Test]
     public async Task TryGetBinderType_WhenNamedArgMissing_ThenReturnsFalse()
     {
-        var code = """
-            public class HttpBinderAttribute : System.Attribute
-            {
-                public HttpBinderType HttpBinderType { get; set; }
-            }
-            [HttpBinder]
-            public class T {}
-        """;
+        const string code = """
+                                public class HttpBinderAttribute : System.Attribute
+                                {
+                                    public HttpBinderType HttpBinderType { get; set; }
+                                }
+                                [HttpBinder]
+                                public class T {}
+                            """;
 
         var symbol = GetTestSymbol(code, "T");
         var attr = symbol.GetAttributes().Single(a =>
@@ -62,17 +61,17 @@ public class AttributeDataExtensionsTests
     [Test]
     public async Task TryGetBinderType_WhenNamedArgIsWrongType_ThenReturnsFalse()
     {
-        var code = """
-            public enum SomethingElse { X = 123 }
+        const string code = """
+                                public enum SomethingElse { X = 123 }
 
-            public class HttpBinderAttribute : System.Attribute
-            {
-                public HttpBinderType HttpBinderType { get; set; }
-            }
+                                public class HttpBinderAttribute : System.Attribute
+                                {
+                                    public HttpBinderType HttpBinderType { get; set; }
+                                }
 
-            [HttpBinder(HttpBinderType = (SomethingElse)123)]
-            public class T {}
-        """;
+                                [HttpBinder(HttpBinderType = (SomethingElse)123)]
+                                public class T {}
+                            """;
 
         var symbol = GetTestSymbol(code, "T");
         var attr = symbol.GetAttributes().Single(a =>
@@ -87,22 +86,22 @@ public class AttributeDataExtensionsTests
     [Test]
     public async Task TryGetBinderType_WhenDifferentNamedArgExists_ThenReturnsFalse()
     {
-        var code = """
-            public enum HttpBinderType
-            {
-                Form,
-                Query,
-                Route
-            }
-            public class HttpBinderAttribute : System.Attribute
-            {
-                public HttpBinderType HttpBinderType { get; set; }
-                public int SomethingElse { get; set; }
-            }
+        const string code = """
+                                public enum HttpBinderType
+                                {
+                                    Form,
+                                    Query,
+                                    Route
+                                }
+                                public class HttpBinderAttribute : System.Attribute
+                                {
+                                    public HttpBinderType HttpBinderType { get; set; }
+                                    public int SomethingElse { get; set; }
+                                }
 
-            [HttpBinder(SomethingElse = 99)]
-            public class T {}
-        """;
+                                [HttpBinder(SomethingElse = 99)]
+                                public class T {}
+                            """;
 
         var symbol = GetTestSymbol(code, "T");
         var attr = symbol.GetAttributes().Single(a =>
@@ -117,23 +116,23 @@ public class AttributeDataExtensionsTests
     [Test]
     public async Task TryGetBinderType_WhenMultipleNamedArgs_ThenStillUsesCorrectOne()
     {
-        var code = """
-        public enum HttpBinderType
-        {
-            Form,
-            Query,
-            Route
-        }
+        const string code = """
+                            public enum HttpBinderType
+                            {
+                                Form,
+                                Query,
+                                Route
+                            }
 
-        public class HttpBinderAttribute : System.Attribute
-        {
-            public HttpBinderType HttpBinderType { get; set; }
-            public int Other { get; set; }
-        }
+                            public class HttpBinderAttribute : System.Attribute
+                            {
+                                public HttpBinderType HttpBinderType { get; set; }
+                                public int Other { get; set; }
+                            }
 
-        [HttpBinder(Other = 12, HttpBinderType = HttpBinderType.Route)]
-        public class T {}
-        """;
+                            [HttpBinder(Other = 12, HttpBinderType = HttpBinderType.Route)]
+                            public class T {}
+                            """;
 
         var symbol = GetTestSymbol(code, "T");
         var attr = symbol.GetAttributes().Single(a =>
@@ -148,9 +147,7 @@ public class AttributeDataExtensionsTests
     [Test]
     public async Task TryGetBinderType_WhenAttributeMissing_ThenReturnsFalse()
     {
-        var code = """
-            public class T {}
-        """;
+        const string code = "public class T {}";
 
         var symbol = GetTestSymbol(code, "T");
 

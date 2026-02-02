@@ -8,15 +8,15 @@ public class SymbolExtensionsTests
     [Test]
     public async Task HasAttribute_WhenAttributePresent_ReturnsTrue()
     {
-        var code = """
-        using System;
+        const string code = """
+                            using System;
 
-        [AttributeUsage(AttributeTargets.Class)]
-        public class TestAttr : Attribute {}
+                            [AttributeUsage(AttributeTargets.Class)]
+                            public class TestAttr : Attribute {}
 
-        [TestAttr]
-        public class T {}
-        """;
+                            [TestAttr]
+                            public class T {}
+                            """;
 
         var symbol = GetTestSymbol(code, "T");
         var result = symbol.HasAttribute("TestAttr");
@@ -27,14 +27,14 @@ public class SymbolExtensionsTests
     [Test]
     public async Task HasAttribute_WhenAttributeMissing_ReturnsFalse()
     {
-        var code = """
-        using System;
+        const string code = """
+                            using System;
 
-        [AttributeUsage(AttributeTargets.Class)]
-        public class TestAttr : Attribute {}
+                            [AttributeUsage(AttributeTargets.Class)]
+                            public class TestAttr : Attribute {}
 
-        public class T {}
-        """;
+                            public class T {}
+                            """;
 
         var symbol = GetTestSymbol(code, "T");
         var result = symbol.HasAttribute("TestAttr");
@@ -45,15 +45,15 @@ public class SymbolExtensionsTests
     [Test]
     public async Task GetAttribute_WhenAttributePresent_ReturnsAttributeData()
     {
-        var code = """
-        using System;
+        const string code = """
+                            using System;
 
-        [AttributeUsage(AttributeTargets.Class)]
-        public class TestAttr : Attribute {}
+                            [AttributeUsage(AttributeTargets.Class)]
+                            public class TestAttr : Attribute {}
 
-        [TestAttr]
-        public class T {}
-        """;
+                            [TestAttr]
+                            public class T {}
+                            """;
 
         var symbol = GetTestSymbol(code, "T");
         var result = symbol.GetAttribute("TestAttr");
@@ -65,14 +65,14 @@ public class SymbolExtensionsTests
     [Test]
     public async Task GetAttribute_WhenAttributeMissing_ReturnsNull()
     {
-        var code = """
-        using System;
+        const string code = """
+                            using System;
 
-        [AttributeUsage(AttributeTargets.Class)]
-        public class TestAttr : Attribute {}
+                            [AttributeUsage(AttributeTargets.Class)]
+                            public class TestAttr : Attribute {}
 
-        public class T {}
-        """;
+                            public class T {}
+                            """;
 
         var symbol = GetTestSymbol(code, "T");
         var result = symbol.GetAttribute("TestAttr");
@@ -83,17 +83,17 @@ public class SymbolExtensionsTests
     [Test]
     public async Task HasAttribute_FullNamespaceMatch_WorksCorrectly()
     {
-        var code = """
-        using System;
+        const string code = """
+                            using System;
 
-        namespace A.B {
-            [AttributeUsage(AttributeTargets.Class)]
-            public class TestAttr : Attribute {}
-        }
+                            namespace A.B {
+                                [AttributeUsage(AttributeTargets.Class)]
+                                public class TestAttr : Attribute {}
+                            }
 
-        [A.B.TestAttr]
-        public class T {}
-        """;
+                            [A.B.TestAttr]
+                            public class T {}
+                            """;
 
         var symbol = GetTestSymbol(code, "T");
         var result = symbol.HasAttribute("A.B.TestAttr");

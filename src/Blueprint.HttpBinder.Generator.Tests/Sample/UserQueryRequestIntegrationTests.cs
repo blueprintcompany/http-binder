@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Hosting;
 using System.Net;
 using System.Net.Http.Json;
-using System.Text;
 
 namespace Blueprint.HttpBinder.Generator.Tests.Sample;
 
@@ -33,31 +32,31 @@ internal class UserQueryRequestIntegrationTests
         {
             // Single IFormFile
             {
-                new StreamContent(new MemoryStream(Encoding.UTF8.GetBytes("file-one"))),
+                new StreamContent(new MemoryStream("file-one"u8.ToArray())),
                 "FormFile",
                 "file1.txt"
             },
 
             // IFormFileCollection
             {
-                new StreamContent(new MemoryStream(Encoding.UTF8.GetBytes("file-two"))),
+                new StreamContent(new MemoryStream("file-two"u8.ToArray())),
                 "FormFiles",
                 "file2.txt"
             },
             {
-                new StreamContent(new MemoryStream(Encoding.UTF8.GetBytes("file-three"))),
+                new StreamContent(new MemoryStream("file-three"u8.ToArray())),
                 "FormFiles",
                 "file3.txt"
             },
 
             // List<IFormFile>
             {
-                new StreamContent(new MemoryStream(Encoding.UTF8.GetBytes("file-four"))),
+                new StreamContent(new MemoryStream("file-four"u8.ToArray())),
                 "FormFileList",
                 "file4.txt"
             },
             {
-                new StreamContent(new MemoryStream(Encoding.UTF8.GetBytes("file-five"))),
+                new StreamContent(new MemoryStream("file-five"u8.ToArray())),
                 "FormFileList",
                 "file5.txt"
             },

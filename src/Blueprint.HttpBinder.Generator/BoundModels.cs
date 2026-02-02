@@ -2,7 +2,7 @@ using System.Linq;
 
 namespace Blueprint.HttpBinder;
 
-//// <summary>
+/// <summary>
 /// Represents a single property that will be bound at runtime. This model must remain equatable for Roslyn to perform incremental caching.
 /// </summary>
 internal sealed record BoundProperty
@@ -53,14 +53,8 @@ internal sealed record BoundProperty
 
     public bool UsesFormValues()
     {
-        if (HttpBinderType == HttpBinderType.Form)
-            return true;
+        return HttpBinderType == HttpBinderType.Form || ChildProperties.Any(childProperty => childProperty.UsesFormValues());
 
-        foreach (var childProperty in ChildProperties)
-            if (childProperty.UsesFormValues())
-                return true;
-
-        return false;
     }
 
     public static string ToCamelCase(string str) => char.ToLowerInvariant(str[0]) + str.Substring(1);
@@ -98,7 +92,7 @@ internal sealed record BoundType(
     string Namespace,
     string FullName,
     BoundTypeKind Kind,
-    HttpBinderType ClassHttpBinderType,
+    bool HasBindableBase,
     EquatableArray<BoundProperty> Properties,
     EquatableArray<string> ConstructorParameterNames)
 {
