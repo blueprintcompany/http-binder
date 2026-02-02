@@ -40,3 +40,21 @@ public partial class NestedClassOuter
         public decimal InitOnlyProperty { get; init; }
     }
 }
+
+[HttpBinder]
+public partial class HttpBinderClassWithHttpBinderBase : HttpBinderClassBase
+{
+    public decimal DecimalProperty { get; set; }
+}
+
+[HttpBinder]
+public partial class HttpBinderClassBase;
+
+[HttpBinder]
+public partial class ClassWithBindAsyncBase : BindAsyncClassBase;
+
+public class  BindAsyncClassBase
+{
+    public static void BindAsync(HttpContext httpContext)
+    {}
+}

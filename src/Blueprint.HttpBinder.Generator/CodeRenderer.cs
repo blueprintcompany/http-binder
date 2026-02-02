@@ -1,5 +1,4 @@
-﻿using Blueprint.HttpBinder.Extensions;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
@@ -58,8 +57,10 @@ internal static class CodeRenderer
         var usesForm = model.UsesFormValues();
         var usesQuery = model.UsesQueryValues();
         var usesRoute = model.UsesRouteValues();
+        
+        var newKeyword = model.HasBindableBase ? "new " : "";
 
-        indent.AppendLine($"public static async global::System.Threading.Tasks.ValueTask<{typeName}> BindAsync(");
+        indent.AppendLine($"public static {newKeyword}async global::System.Threading.Tasks.ValueTask<{typeName}> BindAsync(");
         indent.AppendLine("    global::Microsoft.AspNetCore.Http.HttpContext http)");
         indent.AppendLine("{");
         indent.Indent();
@@ -486,7 +487,12 @@ internal static class CodeRenderer
         indent.AppendLine("if (idxEnd < 0) continue;");
         indent.AppendLine("var idxText = key.Substring(idxStart, idxEnd - idxStart);");
         indent.AppendLine("if (!int.TryParse(idxText, out var index)) continue;");
-        indent.AppendLine($"while ({local}.Count <= index) {local}.Add(default);");
+        var padExpr =
+            property.IsString ? "global::System.String.Empty"
+            : property.IsReferenceType ? "default!"
+            : "default";
+
+        indent.AppendLine($"while ({local}.Count <= index) {local}.Add({padExpr});");
 
         if (property.IsReferenceType)
         {

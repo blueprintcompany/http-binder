@@ -20,7 +20,7 @@ internal class FormFilesDetectedOnRouteOrQueryBinderAnalyzerTests : CSharpAnalyz
     [Test]
     public async Task GivenAQueryClass_WhenAFormFileIsPresent_ThenShowsDiagnostic()
     {
-        var code = TestHelpers.GetTestCode($$"""
+        var code = TestHelpers.GetTestCode("""
             using Microsoft.AspNetCore.Http;
 
             [HttpBinder(HttpBinderType = HttpBinderType.Query)]
@@ -38,7 +38,7 @@ internal class FormFilesDetectedOnRouteOrQueryBinderAnalyzerTests : CSharpAnalyz
     [Test]
     public async Task GivenAQueryClass_WhenAFormFileCollectionIsPresent_ThenShowsDiagnostic()
     {
-        TestCode = TestHelpers.GetTestCode($$"""
+        TestCode = TestHelpers.GetTestCode("""
             using Microsoft.AspNetCore.Http;
 
             [HttpBinder(HttpBinderType = HttpBinderType.Query)]
@@ -54,7 +54,7 @@ internal class FormFilesDetectedOnRouteOrQueryBinderAnalyzerTests : CSharpAnalyz
     [Test]
     public async Task GivenARouteClass_WhenAFormFileIsPresent_ThenShowsDiagnostic()
     {
-        TestCode = TestHelpers.GetTestCode($$"""
+        TestCode = TestHelpers.GetTestCode("""
             using Microsoft.AspNetCore.Http;
 
             [HttpBinder(HttpBinderType = HttpBinderType.Route)]
@@ -70,7 +70,7 @@ internal class FormFilesDetectedOnRouteOrQueryBinderAnalyzerTests : CSharpAnalyz
     [Test]
     public async Task GivenARouteClass_WhenAFormFileCollectionIsPresent_ThenShowsDiagnostic()
     {
-        TestCode = TestHelpers.GetTestCode($$"""
+        TestCode = TestHelpers.GetTestCode("""
             using Microsoft.AspNetCore.Http;
 
             [HttpBinder(HttpBinderType = HttpBinderType.Route)]

@@ -2,7 +2,6 @@
 using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 
 namespace Blueprint.HttpBinder;
@@ -36,6 +35,23 @@ internal static class BindingModelBuilder
         return [.. map.Values];
     }
 
+    public static bool BaseDefinesBindAsync(INamedTypeSymbol type)
+    {
+        for (var b = type.BaseType; b is not null && b.SpecialType != SpecialType.System_Object; b = b.BaseType)
+        {
+            if (b.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == AttributeConstants.HttpBinderAttribute)) return true;
+            
+            foreach (var m in b.GetMembers("BindAsync").OfType<IMethodSymbol>())
+            {
+                if (!m.IsStatic) continue;
+                if (m.Parameters.Length != 1) continue;
+                if (m.Parameters[0].Type.ToDisplayString() != "Microsoft.AspNetCore.Http.HttpContext") continue;
+
+                return true;
+            }
+        }
+        return false;
+    }
 
     public static BoundProperty? BuildBoundProperty(
         IPropertySymbol propertySymbol,
@@ -66,28 +82,30 @@ internal static class BindingModelBuilder
         foreach (var attribute in attributes)
         {
             var attrName = attribute.AttributeClass?.ToDisplayString();
-            if (attrName is null)
-                continue;
-
-            if (attrName == AttributeConstants.BindFromIgnoreAttribute)
+            switch (attrName)
             {
-                return null;
-            }
-
-            if (attrName == AttributeConstants.BindFromAttribute)
-            {
-                attribute.TryGetBinderType(out var parsedBinderType);
-                httpBinderType = parsedBinderType;
-
-                foreach (var namedArgument in attribute.NamedArguments)
+                case null:
+                    continue;
+                case AttributeConstants.BindFromIgnoreAttribute:
+                    return null;
+                case AttributeConstants.BindFromAttribute:
                 {
-                    if (namedArgument.Key == nameof(BindFromAttribute.Name) &&
-                        namedArgument.Value.Value is string newName)
+                    attribute.TryGetBinderType(out var parsedBinderType);
+                    httpBinderType = parsedBinderType;
+
+                    foreach (var namedArgument in attribute.NamedArguments)
                     {
-                        keyName = newName;
+                        if (namedArgument.Key == nameof(BindFromAttribute.Name) &&
+                            namedArgument.Value.Value is string newName)
+                        {
+                            keyName = newName;
+                        }
                     }
+
+                    break;
                 }
             }
+
         }
 
         var collectionElementType = type.FindCollectionType();
@@ -119,13 +137,13 @@ internal static class BindingModelBuilder
                .Select(bp => bp!)
                .ToArray();
 
-            children = new EquatableArray<BoundProperty>(properties);
+            children = new(properties);
         }
 
         // Remove from recursion guard as we unwind.
         recursionGuard.Remove(declaredTypeName);
 
-        return new BoundProperty(
+        return new(
             propertySymbol.Name,
             keyName,
             declaredTypeName,

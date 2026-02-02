@@ -59,7 +59,7 @@ app.MapPost("/users/{routeParam:int}", async (UserQueryRequest req, HttpContext 
 
 app.Run();
 
-[HttpBinder(HttpBinderType = HttpBinderType.Form)]
+[HttpBinder]
 public partial class UserQueryRequest : PagedRequestBase
 {
     [BindFrom(HttpBinderType.Route, Name = "routeParam")]
@@ -92,6 +92,7 @@ public partial class UserQueryRequest : PagedRequestBase
     {
         public string? NestedProperty { get; set; }
         public int OtherProperty { get; set; }
+        public List<string> NestedStringCollection { get; set; } = [];
 
     }
 }

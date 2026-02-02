@@ -9,7 +9,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetFullTypeName_GivenATypeSymbol_ThenReturnsFullyQualifiedName()
     {
-        var code = @"namespace A { public class Foo {} }";
+        const string code = "namespace A { public class Foo {} }";
         var symbol = GetTestSymbol(code, "A.Foo");
 
         var result = symbol.GetFullTypeName();
@@ -20,7 +20,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetMinimalTypeName_GivenATypeSymbol_ThenReturnsMinimalName()
     {
-        var code = @"namespace A { public class Foo {} }";
+        const string code = "namespace A { public class Foo {} }";
         var symbol = GetTestSymbol(code, "A.Foo");
 
         var result = symbol.GetMinimalTypeName();
@@ -31,8 +31,10 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task IsDictionary_GivenADictionaryType_ThenReturnsTrue()
     {
-        var code = @"using System.Collections.Generic;
-                     namespace A { public class T { public Dictionary<string,int> X {get;set;} } }";
+        const string code = """
+                            using System.Collections.Generic;
+                            namespace A { public class T { public Dictionary<string,int> X {get;set;} } }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -42,8 +44,10 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task IsDictionary_GivenAnIDictionaryType_ThenReturnsTrue()
     {
-        var code = @"using System.Collections.Generic;
-                     namespace A { public class T { public IDictionary<string,int> X {get;set;} } }";
+        const string code = """
+                            using System.Collections.Generic;
+                            namespace A { public class T { public IDictionary<string,int> X {get;set;} } }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -53,8 +57,10 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task IsDictionary_GivenAIReadOnlyDictionaryType_ThenReturnsTrue()
     {
-        var code = @"using System.Collections.Generic;
-                     namespace A { public class T { public IReadOnlyDictionary<string,int> X {get;set;} } }";
+        const string code = """
+                            using System.Collections.Generic;
+                            namespace A { public class T { public IReadOnlyDictionary<string,int> X {get;set;} } }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -64,8 +70,10 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task IsDictionary_GivenAListType_ThenReturnsFalse()
     {
-        var code = @"using System.Collections.Generic;
-                     namespace A { public class T { public List<int> X {get;set;} } }";
+        const string code = """
+                            using System.Collections.Generic;
+                            namespace A { public class T { public List<int> X {get;set;} } }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -75,8 +83,10 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task IsDictionary_GivenAGenericTypeThatIsNotADictionary_ThenReturnsFalse()
     {
-        var code = @"using System.Collections.Generic;
-                     namespace A { public class T { public List<string> X {get;set;} } }";
+        const string code = """
+                            using System.Collections.Generic;
+                            namespace A { public class T { public List<string> X {get;set;} } }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -86,7 +96,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task IsDictionary_GivenANonGenericType_ThenReturnsFalse()
     {
-        var code = @"namespace A { public class T { public int X {get;set;} } }";
+        const string code = "namespace A { public class T { public int X {get;set;} } }";
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -96,8 +106,10 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task IsNestedCollection_GivenANestedCollection_ThenReturnsTrue()
     {
-        var code = @"using System.Collections.Generic;
-                     namespace A { public class T { public List<List<int>> X {get;set;} } }";
+        const string code = """
+                            using System.Collections.Generic;
+                            namespace A { public class T { public List<List<int>> X {get;set;} } }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -107,8 +119,10 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task IsNestedCollection_GivenANonNestedCollection_ThenReturnsFalse()
     {
-        var code = @"using System.Collections.Generic;
-                     namespace A { public class T { public List<int> X {get;set;} } }";
+        const string code = """
+                            using System.Collections.Generic;
+                            namespace A { public class T { public List<int> X {get;set;} } }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -118,7 +132,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task IsNestedCollection_GivenANonCollectionType_ThenReturnsFalse()
     {
-        var code = @"namespace A { public class T { public int X {get;set;} } }";
+        const string code = "namespace A { public class T { public int X {get;set;} } }";
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -129,11 +143,13 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenNullableInt_ThenIsNullableIsTrue()
     {
-        var code = @"namespace A { 
-            public class T { 
-                public int? X { get; set; } 
-            } 
-        }";
+        const string code = """
+                            namespace A { 
+                                public class T { 
+                                    public int? X { get; set; } 
+                                } 
+                            }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -145,12 +161,14 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenGuid_ThenIsGuidIsTrue()
     {
-        var code = @"using System;
-            namespace A { 
-            public class T { 
-                public Guid X { get; set; } 
-            } 
-        }";
+        const string code = """
+                            using System;
+                                namespace A { 
+                                public class T { 
+                                    public Guid X { get; set; } 
+                                } 
+                            }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -162,10 +180,12 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenEnum_ThenIsEnumIsTrue()
     {
-        var code = @"namespace A {
-                        public enum E { A, B }
-                        public class T { public E X {get;set;} }
-                     }";
+        const string code = """
+                            namespace A {
+                                public enum E { A, B }
+                                public class T { public E X {get;set;} }
+                             }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -177,11 +197,13 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenPrimitiveInt_ThenIsPrimitiveIsTrue()
     {
-        var code = @"namespace A { 
-            public class T { 
-                public int X { get; set; } 
-            } 
-        }";
+        const string code = """
+                            namespace A { 
+                                public class T { 
+                                    public int X { get; set; } 
+                                } 
+                            }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -193,11 +215,13 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenString_ThenIsStringIsTrue()
     {
-        var code = @"namespace A { 
-            public class T { 
-                public string X { get; set; } 
-            } 
-        }";
+        const string code = """
+                            namespace A { 
+                                public class T { 
+                                    public string X { get; set; } 
+                                } 
+                            }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -209,12 +233,14 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenCustomClass_ThenIsReferenceTypeIsTrue()
     {
-        var code = @"namespace A { 
-            public class C {} 
-            public class T { 
-                public C X { get; set; } 
-            } 
-        }";
+        const string code = """
+                            namespace A { 
+                                public class C {} 
+                                public class T { 
+                                    public C X { get; set; } 
+                                } 
+                            }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -226,11 +252,13 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenAFormFile_ThenIsFormFileIsTrue()
     {
-        var code = @"namespace A { 
-            public class T {
-                public Microsoft.AspNetCore.Http.IFormFile X { get; set; } 
-            } 
-        }";
+        const string code = """
+                            namespace A { 
+                                public class T {
+                                    public Microsoft.AspNetCore.Http.IFormFile X { get; set; } 
+                                } 
+                            }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -242,11 +270,13 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenAFormFileCollection_ThenIsFormFileIsTrue()
     {
-        var code = @"namespace A { 
-            public class T {
-                public Microsoft.AspNetCore.Http.IFormFileCollection X { get; set; } 
-            } 
-        }";
+        const string code = """
+                            namespace A { 
+                                        public class T {
+                                            public Microsoft.AspNetCore.Http.IFormFileCollection X { get; set; } 
+                                        } 
+                                    }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -258,11 +288,13 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenDateTime_ThenIsPrimitiveIsTrue()
     {
-        var code = @"namespace A {
-            public class T {
-                public System.DateTime X { get; set; }
-            }
-        }";
+        const string code = """
+                            namespace A {
+                                        public class T {
+                                            public System.DateTime X { get; set; }
+                                        }
+                                    }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
         var scalarTypeInfo = prop.Type.GetScalarTypeInfo();
@@ -274,11 +306,13 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenNullableDateTime_ThenIsNullableIsTrueAndPrimitive()
     {
-        var code = @"namespace A {
-            public class T {
-                public System.DateTime? X { get; set; }
-            }
-        }";
+        const string code = """
+                            namespace A {
+                                        public class T {
+                                            public System.DateTime? X { get; set; }
+                                        }
+                                    }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
         var scalarTypeInfo = prop.Type.GetScalarTypeInfo();
@@ -291,11 +325,13 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenDateTimeOffset_ThenIsPrimitiveIsTrue()
     {
-        var code = @"namespace A {
-            public class T {
-                public System.DateTimeOffset X { get; set; }
-            }
-        }";
+        const string code = """
+                            namespace A {
+                                        public class T {
+                                            public System.DateTimeOffset X { get; set; }
+                                        }
+                                    }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
         var scalarTypeInfo = prop.Type.GetScalarTypeInfo();
@@ -307,11 +343,13 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenNullableDateTimeOffset_ThenIsNullableIsTrueAndPrimitive()
     {
-        var code = @"namespace A {
-            public class T {
-                public System.DateTimeOffset? X { get; set; }
-            }
-        }";
+        const string code = """
+                            namespace A {
+                                        public class T {
+                                            public System.DateTimeOffset? X { get; set; }
+                                        }
+                                    }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
         var scalarTypeInfo = prop.Type.GetScalarTypeInfo();
@@ -324,11 +362,13 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenDateOnly_ThenIsPrimitiveIsTrue()
     {
-        var code = @"namespace A {
-            public class T {
-                public System.DateOnly X { get; set; }
-            }
-        }";
+        const string code = """
+                            namespace A {
+                                        public class T {
+                                            public System.DateOnly X { get; set; }
+                                        }
+                                    }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
         var scalarTypeInfo = prop.Type.GetScalarTypeInfo();
@@ -339,11 +379,13 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenTimeOnly_ThenIsPrimitiveIsTrue()
     {
-        var code = @"namespace A {
-            public class T {
-                public System.TimeOnly X { get; set; }
-            }
-        }";
+        const string code = """
+                            namespace A {
+                                        public class T {
+                                            public System.TimeOnly X { get; set; }
+                                        }
+                                    }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
         var scalarTypeInfo = prop.Type.GetScalarTypeInfo();
@@ -354,11 +396,13 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenTimeSpan_ThenIsPrimitiveIsTrue()
     {
-        var code = @"namespace A {
-            public class T {
-                public System.TimeSpan X { get; set; }
-            }
-        }";
+        const string code = """
+                            namespace A {
+                                        public class T {
+                                            public System.TimeSpan X { get; set; }
+                                        }
+                                    }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
         var scalarTypeInfo = prop.Type.GetScalarTypeInfo();
@@ -369,7 +413,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenIntArray_ThenIsCollectionPrimitiveNotReferenceType()
     {
-        var code = """
+        const string code = """
             namespace A {
                 public class T {
                     public int[] X { get; set; }
@@ -391,7 +435,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenListInt_ThenIsCollectionPrimitiveNotReferenceType()
     {
-        var code = """
+        const string code = """
         using System.Collections.Generic;
         namespace A {
             public class T {
@@ -412,7 +456,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenIEnumerableInt_ThenIsCollectionPrimitiveNotReferenceType()
     {
-        var code = """
+        const string code = """
             using System.Collections.Generic;
             namespace A {
                 public class T {
@@ -432,7 +476,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenNullableIntArray_ThenElementIsNullablePrimitive()
     {
-        var code = """
+        const string code = """
             namespace A {
                 public class T {
                     public int?[] X { get; set; }
@@ -453,7 +497,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenListGuid_ThenIsGuidNotReferenceType()
     {
-        var code = """
+        const string code = """
         using System;
         using System.Collections.Generic;
 
@@ -475,7 +519,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenListOfReferenceTypeType_ThenIsReferenceTypeIsTrue()
     {
-        var code = """
+        const string code = """
         namespace A {
             public class C { public int A { get; set; } }
             public class T {
@@ -495,7 +539,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenReferenceTypeScalar_ThenIsReferenceTypeIsTrue()
     {
-        var code = """
+        const string code = """
         namespace A {
             public class C {}
             public class T {
@@ -513,7 +557,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenReferenceTypeArray_ThenIsReferenceTypeIsTrue()
     {
-        var code = """
+        const string code = """
         namespace A {
             public class C {}
             public class T {
@@ -532,7 +576,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task GetScalarTypeInfo_GivenFormFileArray_ThenIsFormFileIsTrue()
     {
-        var code = """
+        const string code = """
         using Microsoft.AspNetCore.Http;
 
         public class T {
@@ -550,11 +594,13 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task FindCollectionType_GivenArrayType_ThenReturnsElementType()
     {
-        var code = @"namespace A { 
-            public class T { 
-                public int[] X { get; set; } 
-            } 
-        }";
+        const string code = """
+                            namespace A { 
+                                        public class T { 
+                                            public int[] X { get; set; } 
+                                        } 
+                                    }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -566,14 +612,16 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task FindCollectionType_GivenListType_ThenReturnsElementType()
     {
-        var code = @"
-            using System.Collections.Generic;
+        const string code = """
 
-            namespace A { 
-            public class T { 
-                public List<string> X { get; set; } 
-            } 
-        }";
+                                        using System.Collections.Generic;
+
+                                        namespace A { 
+                                        public class T { 
+                                            public List<string> X { get; set; } 
+                                        } 
+                                    }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -585,11 +633,13 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task FindCollectionType_GivenNonCollectionType_ThenReturnsNull()
     {
-        var code = @"namespace A { 
-            public class T { 
-                public int X { get; set; } 
-            } 
-        }";
+        const string code = """
+                            namespace A { 
+                                        public class T { 
+                                            public int X { get; set; } 
+                                        } 
+                                    }
+                            """;
 
         var prop = (IPropertySymbol)GetTestSymbol(code, "A.T").GetMembers("X")[0];
 
@@ -601,7 +651,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task IsFormFile_GivenAIFormFile_ReturnsTrue()
     {
-        var code = """
+        const string code = """
         using Microsoft.AspNetCore.Http;
 
         public class T {
@@ -618,7 +668,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task IsFormFile_GivenAIFormFileCollection_ReturnsTrue()
     {
-        var code = """
+        const string code = """
         using Microsoft.AspNetCore.Http;
 
         public class T {
@@ -635,7 +685,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task IsFormFile_GivenAIEnumerableIFormFile_ReturnsTrue()
     {
-        var code = """
+        const string code = """
         using Microsoft.AspNetCore.Http;
         using System.Collections.Generic;
 
@@ -653,7 +703,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task IsFormFile_GivenAnArrayIFormFile_ReturnsTrue()
     {
-        var code = """
+        const string code = """
         using Microsoft.AspNetCore.Http;
         using System.Collections.Generic;
 
@@ -671,7 +721,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task IsFormFile_GivenAListIFormFile_ReturnsTrue()
     {
-        var code = """
+        const string code = """
         using Microsoft.AspNetCore.Http;
         using System.Collections.Generic;
 
@@ -689,7 +739,7 @@ public class TypeSymbolExtensionsTests
     [Test]
     public async Task IsFormFile_NonFileTypes_ReturnFalse()
     {
-        var code = """
+        const string code = """
         public class T {
             public string Name { get; set; }
             public int Age { get; set; }
