@@ -167,7 +167,7 @@ internal static class CodeRenderer
         BoundProperty property)
     {
         // Root IFormFileCollection / List<IFormFile> – we let the binding logic assign.
-        if (property.IsFormFile && property.IsCollection)
+        if (property is { IsFormFile: true, IsCollection: true })
         {
             indent.AppendLine($"{property.DeclaredTypeName} {property.SafeCamelCaseName} = null!;");
             return;
@@ -189,7 +189,7 @@ internal static class CodeRenderer
         }
 
         // Complex scalar
-        if (property.IsReferenceType && !property.IsNullable)
+        if (property is { IsReferenceType: true, IsNullable: false })
         {
             indent.AppendLine($"{property.TypeName} {property.SafeCamelCaseName} = null!;");
             return;
@@ -284,7 +284,7 @@ internal static class CodeRenderer
             : $"{assignmentTarget} = ";   // e.g. age =
 
         // End paren for collection adds
-        string closing = useAdd ? ");" : ";";
+        var closing = useAdd ? ");" : ";";
 
         if (property.IsString)
         {
@@ -487,12 +487,7 @@ internal static class CodeRenderer
         indent.AppendLine("if (idxEnd < 0) continue;");
         indent.AppendLine("var idxText = key.Substring(idxStart, idxEnd - idxStart);");
         indent.AppendLine("if (!int.TryParse(idxText, out var index)) continue;");
-        var padExpr =
-            property.IsString ? "global::System.String.Empty"
-            : property.IsReferenceType ? "default!"
-            : "default";
-
-        indent.AppendLine($"while ({local}.Count <= index) {local}.Add({padExpr});");
+        indent.AppendLine($"while ({local}.Count <= index) {local}.Add(default!);");
 
         if (property.IsReferenceType)
         {
