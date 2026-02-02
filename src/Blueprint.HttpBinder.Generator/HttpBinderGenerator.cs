@@ -1,8 +1,6 @@
 using Blueprint.HttpBinder.Extensions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -64,7 +62,7 @@ namespace Blueprint.HttpBinder
                     .Select(p => p.Name)
                     .ToArray();
 
-                ctorParameterNames = new EquatableArray<string>(names);
+                ctorParameterNames = new(names);
             }
 
             var viableProperties = BindingModelBuilder.GetAllViableProperties(typeSymbol)
@@ -84,13 +82,14 @@ namespace Blueprint.HttpBinder
             var name = typeSymbol.Name;
             var fullName = typeSymbol.GetFullTypeName();
             var boundTypeKind = typeSymbol.IsRecord ? BoundTypeKind.RecordClass : BoundTypeKind.Class;
+            var baseDefinesBindAsync = BindingModelBuilder.BaseDefinesBindAsync(typeSymbol);
 
-            return new BoundType(
+            return new(
                 name,
                 @namespace,
                 fullName,
                 boundTypeKind,
-                classHttpBinderType,
+                baseDefinesBindAsync,
                 properties,
                 ctorParameterNames);
         }

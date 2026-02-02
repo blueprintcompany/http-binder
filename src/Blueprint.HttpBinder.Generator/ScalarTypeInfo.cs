@@ -11,14 +11,4 @@ public readonly record struct ScalarTypeInfo(
 {
     public bool IsValueType => IsPrimitive || IsString || IsEnum || IsGuid && !IsFormFile;
     public bool IsReferenceType => !IsValueType;
-
-    public static ScalarTypeInfo Unknown { get; } =
-        new(
-            IsNullable: false,
-            IsGuid: false,
-            IsEnum: false,
-            IsPrimitive: false,
-            IsString: false,
-            IsFormFile: false,
-            TypeName: "unknown");
 }

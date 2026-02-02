@@ -11,8 +11,6 @@ namespace Blueprint.HttpBinder;
 /// </summary>
 internal sealed class IndentedStringBuilder(StringBuilder sb, int initialIndentLevel = 0, string indentToken = "    ")
 {
-    private readonly StringBuilder _sb = sb;
-    private readonly string _indentToken = indentToken;
     private int _indentLevel = initialIndentLevel;
 
     public void Indent() => _indentLevel++;
@@ -20,25 +18,25 @@ internal sealed class IndentedStringBuilder(StringBuilder sb, int initialIndentL
 
     public void Append(string text)
     {
-        _sb.Append(text);
+        sb.Append(text);
     }
 
     public void AppendLine(string text)
     {
         AppendIndent();
-        _sb.AppendLine(text);
+        sb.AppendLine(text);
     }
 
     public void AppendLine()
     {
-        _sb.AppendLine();
+        sb.AppendLine();
     }
 
     private void AppendIndent()
     {
-        for (int i = 0; i < _indentLevel; i++)
+        for (var i = 0; i < _indentLevel; i++)
         {
-            _sb.Append(_indentToken);
+            sb.Append(indentToken);
         }
     }
 }

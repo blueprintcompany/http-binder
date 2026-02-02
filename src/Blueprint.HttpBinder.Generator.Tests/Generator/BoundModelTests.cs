@@ -1,7 +1,4 @@
-﻿using Blueprint.HttpBinder;
-using Microsoft.CodeAnalysis.CSharp;
-
-namespace Blueprint.HttpBinder.Generator.Tests.Generator;
+﻿namespace Blueprint.HttpBinder.Generator.Tests.Generator;
 
 public sealed class BoundPropertyTests
 {
@@ -16,7 +13,7 @@ public sealed class BoundPropertyTests
         bool isCtor = false,
         EquatableArray<BoundProperty>? children = null)
     {
-        return new BoundProperty(
+        return new(
             name,
             keyName,
             declaredType,
