@@ -1,4 +1,4 @@
-name: Publish Blueprint.HttpBinder to GitHub Packages
+name: Build and Publish Blueprint.HttpBinder to GitHub Packages
 
 on:
     push: &push-trigger
