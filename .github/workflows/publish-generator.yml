@@ -1,12 +1,13 @@
 name: Publish Blueprint.HttpBinder to GitHub Packages
 
 on:
-    push:
+    push: &push-trigger
         branches:
             - main
         paths:
             - '**/Blueprint.HttpBinder.Generator/**'
             - '**/Blueprint.HttpBinder.Generator.Abstractions/**'
+    pull_request: *push-trigger
     release:
         types: [created]
     workflow_dispatch:
@@ -19,8 +20,10 @@ permissions:
 
 jobs:
     test:
-      if: github.ref == 'refs/heads/main'
-      runs-on: ubuntu-latest
+      if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
+      runs-on: &blueprint-runners
+        group: blueprint-runners
+        labels: Linux
       steps:
         - name: Checkout repository
           uses: actions/checkout@v6
@@ -34,7 +37,7 @@ jobs:
             dotnet test --project src/${{ env.project_name }}.Tests/${{ env.project_name }}.Tests.csproj
     pack-and-publish:
         if: startsWith(github.event.release.tag_name, 'http-binder-v')
-        runs-on: ubuntu-latest
+        runs-on: *blueprint-runners
         steps:
             - name: Checkout repository
               uses: actions/checkout@v6
