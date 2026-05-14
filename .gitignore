@@ -340,6 +340,7 @@ ASALocalRun/
 
 # MSBuild Binary and Structured Log
 *.binlog
+nupkgs/
 
 # NVidia Nsight GPU debugger configuration file
 *.nvuser
@@ -360,7 +361,7 @@ MigrationBackup/
 .ionide/
 
 # Fody - auto-generated XML schema
-FodyWeavers.xsd\
+FodyWeavers.xsd
 
 # Common IntelliJ Platform excludes
 

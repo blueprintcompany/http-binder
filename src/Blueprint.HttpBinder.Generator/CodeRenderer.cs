@@ -215,7 +215,7 @@ internal static class CodeRenderer
         {
             indent.AppendLine(
                 $"var {property.SafeCamelCaseName}FileList = http.Request.Form.Files.GetFiles(\"{key}\");");
-            indent.AppendLine($"var {property.SafeCamelCaseName}FileCollection = new FormFileCollection();");
+            indent.AppendLine($"var {property.SafeCamelCaseName}FileCollection = new global::Microsoft.AspNetCore.Http.FormFileCollection();");
             indent.AppendLine($"foreach (var file in {property.SafeCamelCaseName}FileList) {property.SafeCamelCaseName}FileCollection.Add(file);");
             indent.AppendLine($"{property.SafeCamelCaseName} = {property.SafeCamelCaseName}FileCollection;");
             return;
@@ -225,7 +225,7 @@ internal static class CodeRenderer
         if (property.IsCollection)
         {
             indent.AppendLine(
-                $"{property.SafeCamelCaseName} = new global::System.Collections.Generic.List<Microsoft.AspNetCore.Http.IFormFile>(http.Request.Form.Files.GetFiles(\"{key}\"));");
+                $"{property.SafeCamelCaseName} = new global::System.Collections.Generic.List<global::Microsoft.AspNetCore.Http.IFormFile>(http.Request.Form.Files.GetFiles(\"{key}\"));");
             return;
         }
 

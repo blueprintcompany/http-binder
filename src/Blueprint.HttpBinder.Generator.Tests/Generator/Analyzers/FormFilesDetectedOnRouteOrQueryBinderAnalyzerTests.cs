@@ -14,7 +14,7 @@ internal class FormFilesDetectedOnRouteOrQueryBinderAnalyzerTests : CSharpAnalyz
             MetadataReference.CreateFromFile(typeof(Microsoft.AspNetCore.Http.IFormFile).Assembly.Location)
         );
 
-        ReferenceAssemblies = ReferenceAssemblies.Net.Net90;
+        ReferenceAssemblies = ReferenceAssemblies.Net.Net100;
     }
 
     [Test]

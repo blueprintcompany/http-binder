@@ -7,7 +7,8 @@
 		<Company>Blueprint Software</Company>
 		<Description>A source generator that produces Minimal API HTTP binders from multiple sources (route, query and form).</Description>
 		<RepositoryUrl>https://github.com/blueprintcompany/http-binder.git</RepositoryUrl>
-		<PackageProjectUrl>https://github.com/blueprintcompany/htmx</PackageProjectUrl>
+		<PackageProjectUrl>https://github.com/blueprintcompany/http-binder</PackageProjectUrl>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<IsPackable>true</IsPackable>
 		<PackageIcon>icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>

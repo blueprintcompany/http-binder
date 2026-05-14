@@ -1,67 +1,79 @@
-name: Build and Publish Blueprint.HttpBinder to GitHub Packages
+name: Build and Publish Blueprint.HttpBinder
 
 on:
-    push: &push-trigger
-        branches:
-            - main
-        paths:
-            - '**/Blueprint.HttpBinder.Generator/**'
-            - '**/Blueprint.HttpBinder.Generator.Abstractions/**'
-    pull_request: *push-trigger
-    release:
-        types: [created]
-    workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/publish-generator.yml'
+      - 'src/**'
+      - 'README.md'
+      - 'icon.png'
+      - 'NuGet.config'
+      - 'global.json'
+      - 'Blueprint.HttpBinder.slnx'
+  pull_request:
+    paths:
+      - '.github/workflows/publish-generator.yml'
+      - 'src/**'
+      - 'README.md'
+      - 'icon.png'
+      - 'NuGet.config'
+      - 'global.json'
+      - 'Blueprint.HttpBinder.slnx'
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
 env:
-  project_name: "Blueprint.HttpBinder.Generator"
+  PROJECT_PATH: src/Blueprint.HttpBinder.Generator/Blueprint.HttpBinder.Generator.csproj
+  TEST_PROJECT_PATH: src/Blueprint.HttpBinder.Generator.Tests/Blueprint.HttpBinder.Generator.Tests.csproj
 
 permissions:
-    contents: read
-    packages: write
+  contents: read
 
 jobs:
-    test:
-      if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
-      runs-on: &blueprint-runners
-        group: blueprint-runners
-        labels: Linux
-      steps:
-        - name: Checkout repository
-          uses: actions/checkout@v6
-        - name: Setup .NET
-          uses: actions/setup-dotnet@v5
-          with:
-              dotnet-version: '9.0.x'
-        - name: Run tests
-          run: |
-            dotnet restore
-            dotnet test --project src/${{ env.project_name }}.Tests/${{ env.project_name }}.Tests.csproj
-    pack-and-publish:
-        if: startsWith(github.event.release.tag_name, 'http-binder-v')
-        runs-on: *blueprint-runners
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v6
-            - name: Setup .NET
-              uses: actions/setup-dotnet@v5
-              with:
-                  dotnet-version: '9.0.x'
-                  source-url: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
-              env:
-                NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
-            - name: Extract version from release tag
-              run: |
-                  TAG_NAME="${{ github.event.release.tag_name }}"
-                  VERSION="${TAG_NAME#http-binder-v}"
-                  [[ -z "$VERSION" || "$VERSION" == "$TAG_NAME" ]] && VERSION="1.0.0"
-                  echo "VERSION=$VERSION" >> $GITHUB_ENV
-            - name: Pack NuGet package
-              run: |
-                dotnet restore 
-                dotnet pack -c Release src/${{env.project_name}}/${{env.project_name}}.csproj -o nupkgs /p:Version=${{ env.VERSION }}
-            - name: Upload NuGet package as an artifact
-              uses: actions/upload-artifact@v6
-              with:
-                  name: drop
-                  path: nupkgs/*.nupkg
-            - name: Push to GitHub Packages
-              run: dotnet nuget push "nupkgs/*.nupkg"
+  build-test-pack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore Blueprint.HttpBinder.slnx
+
+      - name: Test
+        run: dotnet test --project ${{ env.TEST_PROJECT_PATH }} --no-restore
+
+      - name: Determine package version
+        shell: bash
+        run: |
+          VERSION="1.0.0"
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            TAG_NAME="${{ github.event.release.tag_name }}"
+            VERSION="${TAG_NAME#http-binder-v}"
+            if [[ -z "$VERSION" || "$VERSION" == "$TAG_NAME" ]]; then
+              echo "Release tag must use http-binder-v<version> format." >&2
+              exit 1
+            fi
+          fi
+          echo "PACKAGE_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Pack
+        run: dotnet pack -c Release ${{ env.PROJECT_PATH }} -o nupkgs /p:Version=${{ env.PACKAGE_VERSION }} --no-restore
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: nupkgs
+          path: nupkgs/*.nupkg
+
+      - name: Publish to NuGet.org
+        if: ${{ github.event_name == 'release' }}
+        run: dotnet nuget push "nupkgs/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate

@@ -1,7 +1,7 @@
 ﻿namespace Blueprint.HttpBinder
 {
     /// <summary>
-    /// Apply this attribute to a property to override what method its property is bound from.
+    /// Applies an explicit binding source to a property.
     /// <para>Base example:</para>
     /// <example>
     /// <code>
@@ -25,12 +25,14 @@
     [System.AttributeUsage(System.AttributeTargets.Property)]
     public sealed class BindFromAttribute(HttpBinderType type) : System.Attribute
     {
-        /// <inheritdoc />
+        /// <summary>
+        /// Gets the HTTP source used to bind this property.
+        /// </summary>
         public HttpBinderType Type { get; } = type;
 
         /// <summary>
-        /// The name of the form field to bind to the associated property. If not set, the property name is used.
+        /// Gets or sets the HTTP field, query parameter, or route value name. If not set, the property name is used.
         /// </summary>
-        public string Name { get; set; }
+        public string? Name { get; set; }
     }
 }

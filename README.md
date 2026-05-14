@@ -1,168 +1,141 @@
-# HttpBinder
+# Blueprint.HttpBinder
 
-HttpBinder is an incremental C# source generator that provides strongly-typed request binding for Minimal API handlers. You annotate a request DTO, map an endpoint that takes that DTO as a parameter, and HttpBinder generates the binder logic that ASP.NET Core automatically invokes.
+Source-generated request binding for ASP.NET Core Minimal APIs.
 
-There are no runtime conventions, no reflection, and no manual calls to a BindAsync method. If your endpoint delegate takes a bindable DTO, HttpBinder handles the population.
-
-## Why this exists
-
-Minimal APIs handle simple primitives well, but anything beyond a few parameters often becomes repetitive parsing code or forces developers into MVC-style model binding. HttpBinder fills the gap by providing:
-
-- Explicit attribute-driven binding  
-- Deterministic, readable generated code  
-- Compile-time diagnostics for invalid patterns  
-- Zero runtime reflection  
-
-You get predictable binding behavior without relying on conventions.
-
-## How it works
-
-1. Create a partial class representing your request.
-2. Annotate it with `[HttpBinder(...)]`.
-3. Optionally annotate properties with `[BindFrom]` or `[BindFromIgnore]`.
-4. Use the class as a parameter in your Minimal API handler.
-
-ASP.NET Core automatically uses the generated binder:
-
-```csharp
-app.MapPost("/search", (SearchQuery query) =>
-{
-    // query is fully populated by HttpBinder
-});
+```xml
+<PackageReference Include="Blueprint.HttpBinder" Version="1.0.0" />
 ```
 
-The generator creates all binding logic during compilation.
+## Query Example
 
-## Example
+Bind `/search?term=blueprint&page=2`.
 
 ```csharp
+using Blueprint.HttpBinder;
+
+app.MapGet("/search", (SearchQuery query) => Results.Ok(query));
+
 [HttpBinder(HttpBinderType = HttpBinderType.Query)]
 public partial class SearchQuery
 {
     public string? Term { get; set; }
     public int Page { get; set; }
 }
+```
 
-[HttpBinder] // Default is HttpBinderType.Form
-public partial class FooForm
+## Route + Query Example
+
+Bind `/users/42?includeInactive=true`.
+
+```csharp
+using Blueprint.HttpBinder;
+
+app.MapGet("/users/{id:int}", (UserRequest request) => Results.Ok(request));
+
+[HttpBinder(HttpBinderType = HttpBinderType.Query)]
+public partial class UserRequest
 {
-    public string Name { get; set; }
-    public int Age { get; set; }
+    [BindFrom(HttpBinderType.Route)]
+    public int Id { get; set; }
+
+    public bool IncludeInactive { get; set; }
 }
 ```
 
-Endpoint:
+## Form Example
+
+Bind posted form fields and files.
 
 ```csharp
-app.MapGet("/search", (SearchQuery query) =>
+using Blueprint.HttpBinder;
+
+app.MapPost("/uploads", (UploadRequest request) => Results.Ok(request.File.FileName));
+
+[HttpBinder] // Defaults to HttpBinderType.Form
+public partial class UploadRequest
 {
-    // HttpBinder handled everything
-});
+    public string? Title { get; set; }
+    public IFormFile File { get; set; } = null!;
+}
+```
 
-app.MapPost("/search", (FooForm form) =>
+## Property Names
+
+Use `Name` when HTTP names do not match C# names.
+
+```csharp
+[HttpBinder(HttpBinderType = HttpBinderType.Query)]
+public partial class PagedSearch
 {
-    // HttpBinder handled everything
-});
+    [BindFrom(HttpBinderType.Query, Name = "q")]
+    public string? SearchTerm { get; set; }
+
+    [BindFrom(HttpBinderType.Query, Name = "page_size")]
+    public int PageSize { get; set; }
+}
 ```
 
-## Attributes
-
-### `[HttpBinder]`
-
-Marks a class as bindable and defines the default binding source:
+## Ignore Properties
 
 ```csharp
-[HttpBinder(HttpBinderType.Form)]
-public partial class UploadRequest { }
+[HttpBinder(HttpBinderType = HttpBinderType.Query)]
+public partial class ReportRequest
+{
+    public int Year { get; set; }
+
+    [BindFromIgnore]
+    public string? InternalTraceId { get; set; }
+}
 ```
 
-### `[BindFrom]`
+## Supported
 
-Overrides how an individual property is bound:
-
-```csharp
-[BindFrom(HttpBinderType.Query, Name = "page")]
-public int PageNumber { get; set; }
-```
-
-### `[BindFromIgnore]`
-
-Excludes a property from binding:
-
-```csharp
-[BindFromIgnore]
-public string InternalOnly { get; set; }
-```
-
-## Supported types
-
-HttpBinder supports:
-
-- Primitive types (int, bool, double, long, etc.)
-- Nullable primitives  
-- string  
-- Enums  
-- Complex types (Form-only)  
-- Arrays and `List<T>`  
-- `IFormFile` and `IFormFileCollection` (Form-only)
-
-## Unsupported patterns
-
-These produce compile-time diagnostics:
-
-- Dictionary types  
-- Nested collections (`List<List<T>>`, `T[][]`)  
-- Complex objects bound from Query or Route  
-- Complex objects missing a parameterless constructor  
-- `IFormFile` bound from Query or Route  
-- Using `[BindFromIgnore]` with any other `[Bind*]` attributes  
-
-Diagnostics always include the property name, containing type, and the rule broken.
+- .NET 10 apps
+- `int`, `bool`, `double`, `long`, `Guid`, `DateTime`, `DateTimeOffset`
+- nullable primitives
+- `string`
+- enums
+- arrays and `List<T>`
+- form-bound complex objects
+- form-bound `IFormFile`, `IFormFileCollection`, and `List<IFormFile>`
 
 ## Diagnostics
 
-The generator ships analyzers that validate DTOs before emitting code. Diagnostic cases include:
+These produce build diagnostics:
 
-- Complex types detected on Query/Route binders  
-- Nested collection detection  
-- Dictionary detection  
-- Conflicting attributes  
-- Invalid binding types for file uploads  
+- dictionary properties
+- nested collections like `List<List<T>>`
+- complex objects from query or route
+- complex objects without parameterless constructors
+- files from query or route
+- `[BindFromIgnore]` combined with another binding attribute
 
-Diagnostics are surfaced during build with clear IDs and messages.
+## Release
 
-## Performance
+Create a GitHub release with tag format:
 
-HttpBinder is fully incremental:
-
-- Syntax and symbol analysis is cached  
-- Only affected files are reprocessed  
-- Generated binders are plain C#  
-- No reflection is used at runtime  
-
-The generated binders are typically faster than the default model binder for complex DTOs.
-
-## Package usage
-
-Add the source generator to the project that defines your DTOs:
-
-```xml
-<ItemGroup>
-    <PackageReference Include="HttpBinder.Generator" Version="1.0.0" />
-</ItemGroup>
+```text
+http-binder-v1.0.0
 ```
 
-No separate runtime package is needed.
+The release workflow publishes to NuGet.org using `NUGET_API_KEY`.
 
-## When to use HttpBinder
+## Contributing
 
-- You want explicit HTTP binding rules  
-- You want compile-time validation  
-- You prefer predictability over conventions  
-- You want strong performance without reflection  
+Please open a GitHub issue before starting work on a change. This helps confirm scope and avoid duplicate work.
 
-## When not to use it
+Run tests before opening a PR:
 
-- You need automatic deeply nested binding  
-- You rely heavily on MVC-style conventions  
-- You want binder behavior without annotating anything  
+```bash
+dotnet restore Blueprint.HttpBinder.slnx
+dotnet test --project src/Blueprint.HttpBinder.Generator.Tests/Blueprint.HttpBinder.Generator.Tests.csproj --no-restore
+```
+
+For behavior changes, add tests for the generated binder or analyzer diagnostic.
+
+Keep these stable unless the PR is intentionally breaking:
+
+- package ID: `Blueprint.HttpBinder`
+- namespace: `Blueprint.HttpBinder`
+- attributes: `[HttpBinder]`, `[BindFrom]`, `[BindFromIgnore]`
+- diagnostic IDs: `HB001` through `HB005`
