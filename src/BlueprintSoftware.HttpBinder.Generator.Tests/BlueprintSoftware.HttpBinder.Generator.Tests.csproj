@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>true</ImplicitUsings>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\BlueprintSoftware.HttpBinder.Generator\BlueprintSoftware.HttpBinder.Generator.csproj" />
+		<ProjectReference Include="..\BlueprintSoftware.HttpBinder.Sample\BlueprintSoftware.HttpBinder.Sample.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.8" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" Version="1.1.3" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing" Version="1.1.3" />
+		<PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="5.0.0" />
+		<PackageReference Include="TUnit" Version="1.3.15" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<EmbeddedResource Include="..\BlueprintSoftware.HttpBinder.Generator.Abstractions\BindFromIgnoreAttribute.cs">
+			<Link>BindFromIgnoreAttribute.cs</Link>
+		</EmbeddedResource>
+
+		<EmbeddedResource Include="..\BlueprintSoftware.HttpBinder.Generator.Abstractions\BindFromAttribute.cs">
+			<Link>BindFromAttribute.cs</Link>
+		</EmbeddedResource>
+
+		<EmbeddedResource Include="..\BlueprintSoftware.HttpBinder.Generator.Abstractions\HttpBinderType.cs">
+			<Link>HttpBinderType.cs</Link>
+		</EmbeddedResource>
+
+		<EmbeddedResource Include="..\BlueprintSoftware.HttpBinder.Generator.Abstractions\HttpBinderAttribute.cs">
+			<Link>HttpBinderAttribute.cs</Link>
+		</EmbeddedResource>
+	</ItemGroup>
+</Project>

@@ -1,6 +1,0 @@
-<Solution>
-  <Project Path="src/Blueprint.HttpBinder.Generator.Abstractions/Blueprint.HttpBinder.Generator.Abstractions.csproj" />
-  <Project Path="src/Blueprint.HttpBinder.Generator.Tests/Blueprint.HttpBinder.Generator.Tests.csproj" />
-  <Project Path="src/Blueprint.HttpBinder.Generator/Blueprint.HttpBinder.Generator.csproj" />
-  <Project Path="src/Blueprint.HttpBinder.Sample/Blueprint.HttpBinder.Sample.csproj" />
-</Solution>

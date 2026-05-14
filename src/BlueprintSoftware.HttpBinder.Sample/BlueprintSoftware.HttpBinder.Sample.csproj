@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+	</PropertyGroup>
+	<PropertyGroup>
+		<HttpBinderPackageVersion Condition="'$(HttpBinderPackageVersion)' == ''">1.0.0</HttpBinderPackageVersion>
+	</PropertyGroup>
+	<ItemGroup Condition="'$(UsePublicHttpBinderPackage)' != 'true'">
+		<ProjectReference Include="..\BlueprintSoftware.HttpBinder.Generator.Abstractions\BlueprintSoftware.HttpBinder.Generator.Abstractions.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
+		<ProjectReference Include="..\BlueprintSoftware.HttpBinder.Generator\BlueprintSoftware.HttpBinder.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(UsePublicHttpBinderPackage)' == 'true'">
+		<PackageReference Include="BlueprintSoftware.HttpBinder" Version="$(HttpBinderPackageVersion)" />
+	</ItemGroup>
+</Project>
