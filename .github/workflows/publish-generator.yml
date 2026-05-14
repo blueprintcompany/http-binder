@@ -54,7 +54,6 @@ jobs:
       - name: Determine package version
         shell: bash
         run: |
-          VERSION="1.0.0"
           if [[ "${{ github.event_name }}" == "release" ]]; then
             TAG_NAME="${{ github.event.release.tag_name }}"
             VERSION="${TAG_NAME#blueprintsoftware-httpbinder-v}"
@@ -62,7 +61,10 @@ jobs:
               echo "Release tag must use blueprintsoftware-httpbinder-v<version> format." >&2
               exit 1
             fi
+          else
+            VERSION="1.0.0"
           fi
+          echo "Resolved package version: $VERSION"
           echo "PACKAGE_VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Pack
