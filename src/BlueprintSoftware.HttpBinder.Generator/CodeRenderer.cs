@@ -68,7 +68,26 @@ internal static class CodeRenderer
         indent.AppendLine("var request = http.Request;");
 
         if (usesForm)
+        {
+            indent.AppendLine("if (!request.HasFormContentType)");
+            indent.AppendLine("{");
+            indent.Indent();
+            // Minimal APIs convert a null BindAsync result to 400 after this method returns.
+            // Defer the status assignment so wrong-content-type form requests stay 415 without throwing.
+            indent.AppendLine("http.Response.OnStarting(() =>");
+            indent.AppendLine("{");
+            indent.Indent();
+            indent.AppendLine("http.Response.StatusCode = global::Microsoft.AspNetCore.Http.StatusCodes.Status415UnsupportedMediaType;");
+            indent.AppendLine("return global::System.Threading.Tasks.Task.CompletedTask;");
+            indent.Unindent();
+            indent.AppendLine("});");
+            indent.AppendLine();
+            indent.AppendLine("return default!;");
+            indent.Unindent();
+            indent.AppendLine("}");
+            indent.AppendLine();
             indent.AppendLine("var form = await request.ReadFormAsync().ConfigureAwait(false);");
+        }
 
         if (usesQuery)
             indent.AppendLine("var query = request.Query;");

@@ -20,6 +20,17 @@ internal class UserQueryRequestIntegrationTests
     private readonly TestAppFactory _factory = new();
 
     [Test]
+    public async Task WhenPostingJsonToFormBinder_ThenReturnsUnsupportedMediaType()
+    {
+        var response = await _factory.CreateClient().PostAsJsonAsync(
+            "/users/1",
+            new { intProperty = 42 });
+
+        await Assert.That(response.StatusCode)
+            .IsEqualTo(HttpStatusCode.UnsupportedMediaType);
+    }
+
+    [Test]
     public async Task WhenPostingMultipartAndQuery_ThenBinderDeserializesCorrectly()
     {
         // Arrange query params
