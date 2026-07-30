@@ -4,7 +4,10 @@ using BlueprintSoftware.HttpBinder.Sample.Enums;
 using static UserQueryRequest;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddAntiforgery();
+
 var app = builder.Build();
+app.UseAntiforgery();
 
 // Example endpoint demonstrating usage of the generated binder. The
 // UserQueryRequest parameter is bound by the generated BindAsync method

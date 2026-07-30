@@ -1,5 +1,9 @@
 ﻿using BlueprintSoftware.HttpBinder.Sample.Enums;
+using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Net;
 using System.Net.Http.Json;
@@ -19,10 +23,54 @@ internal class UserQueryRequestIntegrationTests
 
     private readonly TestAppFactory _factory = new();
 
+    private HttpClient CreateAntiforgeryClient()
+    {
+        var client = _factory.CreateClient();
+        var antiforgery = _factory.Services.GetRequiredService<IAntiforgery>();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = _factory.Services
+        };
+        var tokenSet = antiforgery.GetAndStoreTokens(http);
+        var cookie = http.Response.Headers.SetCookie.ToString().Split(';')[0];
+
+        client.DefaultRequestHeaders.Add("Cookie", cookie);
+        client.DefaultRequestHeaders.Add("RequestVerificationToken", tokenSet.RequestToken);
+        return client;
+    }
+
+    [Test]
+    public async Task WhenEndpointUsesFormBinder_ThenRequiresAntiforgeryValidation()
+    {
+        var endpointDataSource = _factory.Services.GetRequiredService<EndpointDataSource>();
+        var endpoint = endpointDataSource.Endpoints
+            .OfType<RouteEndpoint>()
+            .Single(e => e.RoutePattern.RawText == "/users/{routeParam:int}");
+
+        var antiforgeryMetadata = endpoint.Metadata.GetMetadata<IAntiforgeryMetadata>();
+
+        await Assert.That(antiforgeryMetadata).IsNotNull();
+        await Assert.That(antiforgeryMetadata!.RequiresValidation).IsTrue();
+    }
+
+    [Test]
+    public async Task WhenPostingFormWithoutAntiforgeryToken_ThenReturnsBadRequest()
+    {
+        using var form = new MultipartFormDataContent
+        {
+            { new StringContent("42"), "IntProperty" }
+        };
+
+        var response = await _factory.CreateClient().PostAsync("/users/1", form);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+    }
+
     [Test]
     public async Task WhenPostingJsonToFormBinder_ThenReturnsUnsupportedMediaType()
     {
-        var response = await _factory.CreateClient().PostAsJsonAsync(
+        var client = CreateAntiforgeryClient();
+        var response = await client.PostAsJsonAsync(
             "/users/1",
             new { intProperty = 42 });
 
@@ -95,7 +143,8 @@ internal class UserQueryRequestIntegrationTests
         };
 
         // Act
-        var response = await _factory.CreateClient().PostAsync(url, form);
+        var client = CreateAntiforgeryClient();
+        var response = await client.PostAsync(url, form);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 

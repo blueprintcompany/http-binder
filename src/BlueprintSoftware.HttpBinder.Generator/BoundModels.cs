@@ -93,6 +93,7 @@ internal sealed record BoundType(
     string FullName,
     BoundTypeKind Kind,
     bool HasBindableBase,
+    bool HasEndpointParameterMetadataProvider,
     EquatableArray<BoundProperty> Properties,
     EquatableArray<string> ConstructorParameterNames)
 {

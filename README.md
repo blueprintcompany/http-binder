@@ -59,6 +59,19 @@ public partial class UploadRequest
 }
 ```
 
+Form-bound generated types contribute antiforgery metadata just like Minimal API
+`[FromForm]` parameters. Configure antiforgery middleware:
+
+```csharp
+builder.Services.AddAntiforgery();
+
+var app = builder.Build();
+app.UseAntiforgery();
+```
+
+Endpoints that don't use cookie-based authentication can opt out with
+`.DisableAntiforgery()`.
+
 ## Property Names
 
 Use `Name` when HTTP names do not match C# names.

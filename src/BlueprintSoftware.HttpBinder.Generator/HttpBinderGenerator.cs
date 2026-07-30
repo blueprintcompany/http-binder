@@ -83,6 +83,8 @@ namespace BlueprintSoftware.HttpBinder
             var fullName = typeSymbol.GetFullTypeName();
             var boundTypeKind = typeSymbol.IsRecord ? BoundTypeKind.RecordClass : BoundTypeKind.Class;
             var baseDefinesBindAsync = BindingModelBuilder.BaseDefinesBindAsync(typeSymbol);
+            var hasEndpointParameterMetadataProvider = typeSymbol.AllInterfaces.Any(
+                i => i.ToDisplayString() == AttributeConstants.EndpointParameterMetadataProvider);
 
             return new(
                 name,
@@ -90,6 +92,7 @@ namespace BlueprintSoftware.HttpBinder
                 fullName,
                 boundTypeKind,
                 baseDefinesBindAsync,
+                hasEndpointParameterMetadataProvider,
                 properties,
                 ctorParameterNames);
         }

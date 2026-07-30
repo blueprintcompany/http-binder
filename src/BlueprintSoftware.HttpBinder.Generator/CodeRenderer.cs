@@ -35,11 +35,16 @@ internal static class CodeRenderer
             _ => "class"
         };
 
-        indent.AppendLine($"partial {typeDeclaration} {model.Name}");
+        var implementedInterfaces = model.UsesFormValues() && !model.HasEndpointParameterMetadataProvider
+            ? " : global::Microsoft.AspNetCore.Http.Metadata.IEndpointParameterMetadataProvider"
+            : "";
+
+        indent.AppendLine($"partial {typeDeclaration} {model.Name}{implementedInterfaces}");
         indent.AppendLine("{");
         indent.Indent();
 
         RenderBindMethod(indent, model);
+        RenderAntiforgeryMetadata(indent, model);
         RenderComplexHelpers(indent, model);
 
         indent.Unindent();
@@ -49,6 +54,32 @@ internal static class CodeRenderer
             stringBuilder.AppendLine("}");
 
         return stringBuilder.ToString();
+    }
+
+    private static void RenderAntiforgeryMetadata(IndentedStringBuilder indent, BoundType model)
+    {
+        if (!model.UsesFormValues() || model.HasEndpointParameterMetadataProvider)
+        {
+            return;
+        }
+
+        indent.AppendLine();
+        indent.AppendLine("static void global::Microsoft.AspNetCore.Http.Metadata.IEndpointParameterMetadataProvider.PopulateMetadata(");
+        indent.AppendLine("    global::System.Reflection.ParameterInfo _,");
+        indent.AppendLine("    global::Microsoft.AspNetCore.Builder.EndpointBuilder builder)");
+        indent.AppendLine("{");
+        indent.Indent();
+        indent.AppendLine("builder.Metadata.Add(new __HttpBinderAntiforgeryMetadata());");
+        indent.Unindent();
+        indent.AppendLine("}");
+        indent.AppendLine();
+        indent.AppendLine("private sealed class __HttpBinderAntiforgeryMetadata :");
+        indent.AppendLine("    global::Microsoft.AspNetCore.Antiforgery.IAntiforgeryMetadata");
+        indent.AppendLine("{");
+        indent.Indent();
+        indent.AppendLine("public bool RequiresValidation => true;");
+        indent.Unindent();
+        indent.AppendLine("}");
     }
 
     private static void RenderBindMethod(IndentedStringBuilder indent, BoundType model)
@@ -64,6 +95,18 @@ internal static class CodeRenderer
         indent.AppendLine("    global::Microsoft.AspNetCore.Http.HttpContext http)");
         indent.AppendLine("{");
         indent.Indent();
+
+        if (usesForm)
+        {
+            indent.AppendLine("if (http.Features.Get<global::Microsoft.AspNetCore.Antiforgery.IAntiforgeryValidationFeature>() is { IsValid: false })");
+            indent.AppendLine("{");
+            indent.Indent();
+            indent.AppendLine("http.Response.StatusCode = global::Microsoft.AspNetCore.Http.StatusCodes.Status400BadRequest;");
+            indent.AppendLine("return default!;");
+            indent.Unindent();
+            indent.AppendLine("}");
+            indent.AppendLine();
+        }
 
         indent.AppendLine("var request = http.Request;");
 
