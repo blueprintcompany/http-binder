@@ -4,10 +4,10 @@ using BlueprintSoftware.HttpBinder.Sample.Enums;
 using static UserQueryRequest;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddAntiforgery();
 
+// .NET 11 WebApplication auto-injects cross-origin CSRF protection (Sec-Fetch-Site / Origin)
+// for endpoints with antiforgery metadata, which form-bound generated binders contribute.
 var app = builder.Build();
-app.UseAntiforgery();
 
 // Example endpoint demonstrating usage of the generated binder. The
 // UserQueryRequest parameter is bound by the generated BindAsync method

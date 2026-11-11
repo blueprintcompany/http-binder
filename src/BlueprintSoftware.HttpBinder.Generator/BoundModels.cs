@@ -59,10 +59,16 @@ internal sealed record BoundProperty
 
     public static string ToCamelCase(string str) => char.ToLowerInvariant(str[0]) + str.Substring(1);
 
+    /// <summary>
+    /// Culture-sensitive types parse with the invariant culture, matching Minimal API route and query binding.
+    /// </summary>
+    public bool UsesInvariantCulture => NonNullTypeName is not ("bool" or "char" or "System.Guid");
+
     public string GetTryParseMethod() =>
         NonNullTypeName switch
         {
             "bool" => "bool.TryParse",
+            "char" => "char.TryParse",
             "byte" => "byte.TryParse",
             "sbyte" => "sbyte.TryParse",
             "short" => "short.TryParse",
@@ -74,12 +80,12 @@ internal sealed record BoundProperty
             "float" => "float.TryParse",
             "double" => "double.TryParse",
             "decimal" => "decimal.TryParse",
-            "System.Guid" => "System.Guid.TryParse",
-            "System.DateTime" => "System.DateTime.TryParse",
-            "System.DateTimeOffset" => "System.DateTimeOffset.TryParse",
-            "System.DateOnly" => "System.DateOnly.TryParse",
-            "System.TimeOnly" => "System.TimeOnly.TryParse",
-            "System.TimeSpan" => "System.TimeSpan.TryParse",
+            "System.Guid" => "global::System.Guid.TryParse",
+            "System.DateTime" => "global::System.DateTime.TryParse",
+            "System.DateTimeOffset" => "global::System.DateTimeOffset.TryParse",
+            "System.DateOnly" => "global::System.DateOnly.TryParse",
+            "System.TimeOnly" => "global::System.TimeOnly.TryParse",
+            "System.TimeSpan" => "global::System.TimeSpan.TryParse",
             _ => "int.TryParse"
         };
 }

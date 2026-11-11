@@ -4,7 +4,7 @@ Thanks for helping improve BlueprintSoftware.HttpBinder.
 
 ## Local setup
 
-Install the .NET 10 SDK, then run:
+Install the .NET 11 SDK, then run:
 
 ```bash
 dotnet restore BlueprintSoftware.HttpBinder.slnx

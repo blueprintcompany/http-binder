@@ -14,7 +14,11 @@ internal class FormFilesDetectedOnRouteOrQueryBinderAnalyzerTests : CSharpAnalyz
             MetadataReference.CreateFromFile(typeof(Microsoft.AspNetCore.Http.IFormFile).Assembly.Location)
         );
 
-        ReferenceAssemblies = ReferenceAssemblies.Net.Net100;
+        // Microsoft.CodeAnalysis.Testing does not ship a .NET 11 preset yet.
+        ReferenceAssemblies = new ReferenceAssemblies(
+            "net11.0",
+            new PackageIdentity("Microsoft.NETCore.App.Ref", "11.0.0"),
+            Path.Combine("ref", "net11.0"));
     }
 
     [Test]

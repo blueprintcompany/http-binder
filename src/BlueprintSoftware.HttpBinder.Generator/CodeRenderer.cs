@@ -69,15 +69,9 @@ internal static class CodeRenderer
         indent.AppendLine("    global::Microsoft.AspNetCore.Builder.EndpointBuilder builder)");
         indent.AppendLine("{");
         indent.Indent();
-        indent.AppendLine("builder.Metadata.Add(new __HttpBinderAntiforgeryMetadata());");
-        indent.Unindent();
-        indent.AppendLine("}");
-        indent.AppendLine();
-        indent.AppendLine("private sealed class __HttpBinderAntiforgeryMetadata :");
-        indent.AppendLine("    global::Microsoft.AspNetCore.Antiforgery.IAntiforgeryMetadata");
-        indent.AppendLine("{");
-        indent.Indent();
-        indent.AppendLine("public bool RequiresValidation => true;");
+        // Same metadata Minimal APIs infer for form parameters. It opts the endpoint into the built-in
+        // cross-origin CSRF protection and, when UseAntiforgery() is configured, token validation.
+        indent.AppendLine("builder.Metadata.Add(new global::Microsoft.AspNetCore.Antiforgery.RequireAntiforgeryTokenAttribute());");
         indent.Unindent();
         indent.AppendLine("}");
     }
@@ -355,12 +349,15 @@ internal static class CodeRenderer
         else if (property.IsEnum)
         {
             indent.AppendLine(
-                $"if ({rawVar} != null && Enum.TryParse<{property.NonNullTypeName}>({rawVar}, true, out var {parsed})) {assign}{parsed}{closing}");
+                $"if ({rawVar} != null && global::System.Enum.TryParse<{property.NonNullTypeName}>({rawVar}, true, out var {parsed})) {assign}{parsed}{closing}");
         }
         else
         {
+            var formatProvider = property.UsesInvariantCulture
+                ? "global::System.Globalization.CultureInfo.InvariantCulture, "
+                : "";
             indent.AppendLine(
-                $"if ({rawVar} != null && {property.GetTryParseMethod()}({rawVar}, out var {parsed})) {assign}{parsed}{closing}");
+                $"if ({rawVar} != null && {property.GetTryParseMethod()}({rawVar}, {formatProvider}out var {parsed})) {assign}{parsed}{closing}");
         }
     }
 
@@ -395,21 +392,14 @@ internal static class CodeRenderer
             return;
         }
 
-        var keyName = property.KeyName;
-
-        if (property.HttpBinderType == HttpBinderType.Query)
-        {
-            indent.AppendLine($"if (query.TryGetValue(\"{keyName}\", out var {keyName}Values))");
-        }
-        else
-        {
-            indent.AppendLine($"if (form.TryGetValue(\"{keyName}\", out var {keyName}Values))");
-        }
+        var source = property.HttpBinderType == HttpBinderType.Query ? "query" : "form";
+        var valuesVar = $"{property.SafeCamelCaseName}Values";
+        indent.AppendLine($"if ({source}.TryGetValue(\"{property.KeyName}\", out var {valuesVar}))");
 
         var rawVar = "val";
         indent.AppendLine("{");
         indent.Indent();
-        indent.AppendLine($"foreach (var {rawVar} in {keyName}Values)");
+        indent.AppendLine($"foreach (var {rawVar} in {valuesVar})");
         indent.AppendLine("{");
         indent.Indent();
 
@@ -543,7 +533,7 @@ internal static class CodeRenderer
         indent.AppendLine("{");
         indent.Indent();
 
-        indent.AppendLine($"if (!key.StartsWith({prefixVar})) continue;");
+        indent.AppendLine($"if (!key.StartsWith({prefixVar}, global::System.StringComparison.Ordinal)) continue;");
         indent.AppendLine($"var idxStart = {prefixVar}.Length;");
         indent.AppendLine("var idxEnd = key.IndexOf(']', idxStart);");
         indent.AppendLine("if (idxEnd < 0) continue;");
@@ -584,7 +574,7 @@ internal static class CodeRenderer
         indent.AppendLine("{");
         indent.Indent();
 
-        indent.AppendLine($"if (!key.StartsWith({prefixVar})) continue;");
+        indent.AppendLine($"if (!key.StartsWith({prefixVar}, global::System.StringComparison.Ordinal)) continue;");
 
         indent.AppendLine($"var idxStart = {prefixVar}.Length;");
         indent.AppendLine("var idxEnd = key.IndexOf(']', idxStart);");

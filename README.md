@@ -59,8 +59,21 @@ public partial class UploadRequest
 }
 ```
 
-Form-bound generated types contribute antiforgery metadata just like Minimal API
-`[FromForm]` parameters. Configure antiforgery middleware:
+## CSRF Protection
+
+Form-bound generated types contribute antiforgery metadata, just like Minimal API
+`[FromForm]` parameters. A cross-origin request that fails validation gets `400 Bad Request`
+before any form value is read.
+
+`WebApplication` adds cross-origin CSRF protection automatically. It uses the
+`Sec-Fetch-Site` and `Origin` headers, so no tokens, cookies, or middleware setup are needed:
+
+- Same-origin browser requests are allowed.
+- Cross-site browser requests are rejected, unless the endpoint's CORS policy trusts the origin
+  and allows credentials.
+- Non-browser clients (no `Sec-Fetch-Site` or `Origin` header) are allowed.
+
+Token-based antiforgery still works. To require a token on top of the origin check, add:
 
 ```csharp
 builder.Services.AddAntiforgery();
@@ -69,8 +82,10 @@ var app = builder.Build();
 app.UseAntiforgery();
 ```
 
-Endpoints that don't use cookie-based authentication can opt out with
-`.DisableAntiforgery()`.
+Opt out per endpoint with `.DisableAntiforgery()`, or for the whole app with the
+`DisableCsrfProtection` configuration setting. If the built-in protection is disabled and
+`UseAntiforgery()` is not configured, form endpoints throw at request time because no
+antiforgery middleware handles their metadata.
 
 ## Property Names
 
@@ -103,8 +118,9 @@ public partial class ReportRequest
 
 ## Supported
 
-- .NET 10 apps
-- `int`, `bool`, `double`, `long`, `Guid`, `DateTime`, `DateTimeOffset`
+- .NET 11 apps
+- `bool`, `char`, integer and floating-point numbers, `decimal`, `Guid`
+- `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly`, `TimeSpan`, parsed with the invariant culture
 - nullable primitives
 - `string`
 - enums
@@ -135,4 +151,4 @@ The release workflow publishes to NuGet.org using `NUGET_API_KEY`.
 
 ## Contributing
 
-Please see the [Contributing](CONTRIBUTING.md) guidlines
+Please see the [Contributing](CONTRIBUTING.md) guidelines

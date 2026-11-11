@@ -157,6 +157,7 @@ public sealed class BoundPropertyTests
         var cases = new (string TypeName, string Expected)[]
         {
             ("bool", "bool.TryParse"),
+            ("char", "char.TryParse"),
             ("byte", "byte.TryParse"),
             ("sbyte", "sbyte.TryParse"),
             ("short", "short.TryParse"),
@@ -168,12 +169,12 @@ public sealed class BoundPropertyTests
             ("float", "float.TryParse"),
             ("double", "double.TryParse"),
             ("decimal", "decimal.TryParse"),
-            ("System.Guid", "System.Guid.TryParse"),
-            ("System.DateTime", "System.DateTime.TryParse"),
-            ("System.DateTimeOffset", "System.DateTimeOffset.TryParse"),
-            ("System.DateOnly", "System.DateOnly.TryParse"),
-            ("System.TimeOnly", "System.TimeOnly.TryParse"),
-            ("System.TimeSpan", "System.TimeSpan.TryParse")
+            ("System.Guid", "global::System.Guid.TryParse"),
+            ("System.DateTime", "global::System.DateTime.TryParse"),
+            ("System.DateTimeOffset", "global::System.DateTimeOffset.TryParse"),
+            ("System.DateOnly", "global::System.DateOnly.TryParse"),
+            ("System.TimeOnly", "global::System.TimeOnly.TryParse"),
+            ("System.TimeSpan", "global::System.TimeSpan.TryParse")
         };
 
         foreach (var (typeName, expected) in cases)

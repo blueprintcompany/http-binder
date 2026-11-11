@@ -47,7 +47,7 @@ public sealed class CodeRendererTests
             "IAntiforgeryValidationFeature",
             StringComparison.Ordinal)).IsTrue();
         await Assert.That(source.Contains(
-            "public bool RequiresValidation => true;",
+            "RequireAntiforgeryTokenAttribute",
             StringComparison.Ordinal)).IsTrue();
     }
 

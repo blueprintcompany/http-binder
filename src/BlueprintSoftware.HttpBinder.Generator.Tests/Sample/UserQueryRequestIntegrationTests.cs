@@ -1,6 +1,5 @@
 ﻿using BlueprintSoftware.HttpBinder.Sample.Enums;
 using Microsoft.AspNetCore.Antiforgery;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,20 +22,20 @@ internal class UserQueryRequestIntegrationTests
 
     private readonly TestAppFactory _factory = new();
 
-    private HttpClient CreateAntiforgeryClient()
+    private async Task<HttpResponseMessage> PostFormAsync(params (string Name, string Value)[] headers)
     {
-        var client = _factory.CreateClient();
-        var antiforgery = _factory.Services.GetRequiredService<IAntiforgery>();
-        var http = new DefaultHttpContext
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/users/1")
         {
-            RequestServices = _factory.Services
+            Content = new MultipartFormDataContent
+            {
+                { new StringContent("42"), "IntProperty" }
+            }
         };
-        var tokenSet = antiforgery.GetAndStoreTokens(http);
-        var cookie = http.Response.Headers.SetCookie.ToString().Split(';')[0];
 
-        client.DefaultRequestHeaders.Add("Cookie", cookie);
-        client.DefaultRequestHeaders.Add("RequestVerificationToken", tokenSet.RequestToken);
-        return client;
+        foreach (var (name, value) in headers)
+            request.Headers.Add(name, value);
+
+        return await _factory.CreateClient().SendAsync(request);
     }
 
     [Test]
@@ -54,23 +53,35 @@ internal class UserQueryRequestIntegrationTests
     }
 
     [Test]
-    public async Task WhenPostingFormWithoutAntiforgeryToken_ThenReturnsBadRequest()
+    public async Task WhenCrossSiteBrowserPostsForm_ThenReturnsBadRequest()
     {
-        using var form = new MultipartFormDataContent
-        {
-            { new StringContent("42"), "IntProperty" }
-        };
-
-        var response = await _factory.CreateClient().PostAsync("/users/1", form);
+        var response = await PostFormAsync(("Sec-Fetch-Site", "cross-site"));
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
     }
 
     [Test]
+    public async Task WhenUntrustedOriginPostsFormWithoutFetchMetadata_ThenReturnsBadRequest()
+    {
+        var response = await PostFormAsync(("Origin", "https://attacker.example"));
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+    }
+
+    [Test]
+    public async Task WhenSameOriginBrowserPostsForm_ThenBindsRequest()
+    {
+        var response = await PostFormAsync(("Sec-Fetch-Site", "same-origin"));
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<UserQueryResponse>();
+        await Assert.That(result!.IntProperty).IsEqualTo(42);
+    }
+
+    [Test]
     public async Task WhenPostingJsonToFormBinder_ThenReturnsUnsupportedMediaType()
     {
-        var client = CreateAntiforgeryClient();
-        var response = await client.PostAsJsonAsync(
+        var response = await _factory.CreateClient().PostAsJsonAsync(
             "/users/1",
             new { intProperty = 42 });
 
@@ -143,8 +154,7 @@ internal class UserQueryRequestIntegrationTests
         };
 
         // Act
-        var client = CreateAntiforgeryClient();
-        var response = await client.PostAsync(url, form);
+        var response = await _factory.CreateClient().PostAsync(url, form);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
