@@ -3,7 +3,7 @@
 Source-generated request binding for ASP.NET Core Minimal APIs.
 
 ```xml
-<PackageReference Include="BlueprintSoftware.HttpBinder" Version="1.0.0" />
+<PackageReference Include="BlueprintSoftware.HttpBinder" Version="2.0.0" />
 ```
 
 ## Query Example
@@ -144,12 +144,8 @@ These produce build diagnostics:
 Create a GitHub release with tag format:
 
 ```text
-blueprintsoftware-httpbinder-v1.0.0
+blueprintsoftware-httpbinder-v2.0.0
 ```
-
-The release workflow publishes to NuGet.org with [trusted publishing](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing).
-It needs a nuget.org trusted publishing policy for `blueprintcompany/http-binder` and workflow
-`publish-generator.yml`, plus a `NUGET_USER` repository secret set to the nuget.org username.
 
 ## Contributing
 
