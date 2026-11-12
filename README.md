@@ -147,7 +147,9 @@ Create a GitHub release with tag format:
 blueprintsoftware-httpbinder-v1.0.0
 ```
 
-The release workflow publishes to NuGet.org using `NUGET_API_KEY`.
+The release workflow publishes to NuGet.org with [trusted publishing](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing).
+It needs a nuget.org trusted publishing policy for `blueprintcompany/http-binder` and workflow
+`publish-generator.yml`, plus a `NUGET_USER` repository secret set to the nuget.org username.
 
 ## Contributing
 
