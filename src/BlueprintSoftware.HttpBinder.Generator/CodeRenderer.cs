@@ -453,7 +453,7 @@ internal static class CodeRenderer
                 var listType = $"global::System.Collections.Generic.List<{property.TypeName}>";
                 indent.AppendLine($"{listType} {property.SafeCamelCaseName} = new {listType}();");
             }
-            else if (property.IsNullable || property.IsString || property.IsFormFile)
+            else if (property.IsNullable || property.IsString || property.IsFormFile || property.IsReferenceType)
             {
                 indent.AppendLine($"{property.TypeName} {property.SafeCamelCaseName} = null!;");
             }

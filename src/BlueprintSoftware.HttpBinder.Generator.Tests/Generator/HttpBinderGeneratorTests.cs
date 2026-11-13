@@ -74,6 +74,37 @@ public sealed class HttpBinderGeneratorTests
         }
     }
 
+    [Test]
+    public async Task GivenComplexTypeNestedInComplexType_WhenGenerating_ThenEmitsNoWarnings()
+    {
+        var output = Generate(
+            """
+            public sealed class Address
+            {
+                public string Street { get; set; } = string.Empty;
+            }
+
+            public sealed class Facility
+            {
+                public Address Address { get; set; } = new();
+            }
+
+            [HttpBinder(HttpBinderType = HttpBinderType.Form)]
+            public partial class Request
+            {
+                public Facility Facility { get; set; } = new();
+            }
+            """);
+        var userTree = output.SyntaxTrees.First();
+
+        var warnings = output.GetDiagnostics()
+            .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Warning
+                && diagnostic.Location.SourceTree != userTree)
+            .Select(diagnostic => diagnostic.ToString());
+
+        await Assert.That(warnings).IsEmpty();
+    }
+
     private static object Get(object instance, string propertyName) =>
         instance.GetType().GetProperty(propertyName)!.GetValue(instance)!;
 
@@ -92,7 +123,7 @@ public sealed class HttpBinderGeneratorTests
         return task.GetType().GetProperty("Result")!.GetValue(task)!;
     }
 
-    private static Type CompileGeneratedType(string source, string typeName)
+    private static Compilation Generate(string source)
     {
         // No usings on purpose: generated code must not depend on consumer implicit usings.
         var compilation = CSharpCompilation.Create(
@@ -101,10 +132,18 @@ public sealed class HttpBinderGeneratorTests
             ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
                 .Split(Path.PathSeparator)
                 .Select(path => MetadataReference.CreateFromFile(path)),
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            new CSharpCompilationOptions(
+                OutputKind.DynamicallyLinkedLibrary,
+                nullableContextOptions: NullableContextOptions.Enable));
 
         CSharpGeneratorDriver.Create(new HttpBinderGenerator())
             .RunGeneratorsAndUpdateCompilation(compilation, out var output, out _);
+        return output;
+    }
+
+    private static Type CompileGeneratedType(string source, string typeName)
+    {
+        var output = Generate(source);
 
         using var stream = new MemoryStream();
         var emit = output.Emit(stream);
