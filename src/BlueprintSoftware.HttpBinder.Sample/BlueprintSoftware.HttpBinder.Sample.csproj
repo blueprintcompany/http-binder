@@ -6,7 +6,7 @@
 		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
 	</PropertyGroup>
 	<PropertyGroup>
-		<HttpBinderPackageVersion Condition="'$(HttpBinderPackageVersion)' == ''">2.0.0</HttpBinderPackageVersion>
+		<HttpBinderPackageVersion Condition="'$(HttpBinderPackageVersion)' == ''">2.0.1</HttpBinderPackageVersion>
 	</PropertyGroup>
 	<ItemGroup Condition="'$(UsePublicHttpBinderPackage)' != 'true'">
 		<ProjectReference Include="..\BlueprintSoftware.HttpBinder.Generator.Abstractions\BlueprintSoftware.HttpBinder.Generator.Abstractions.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />

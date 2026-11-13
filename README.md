@@ -3,7 +3,7 @@
 Source-generated request binding for ASP.NET Core Minimal APIs.
 
 ```xml
-<PackageReference Include="BlueprintSoftware.HttpBinder" Version="2.0.0" />
+<PackageReference Include="BlueprintSoftware.HttpBinder" Version="2.0.1" />
 ```
 
 ## Query Example
@@ -144,7 +144,7 @@ These produce build diagnostics:
 Create a GitHub release with tag format:
 
 ```text
-blueprintsoftware-httpbinder-v2.0.0
+blueprintsoftware-httpbinder-v2.0.1
 ```
 
 ## Contributing
